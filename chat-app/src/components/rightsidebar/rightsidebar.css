@@ -1,0 +1,94 @@
+
+.rs
+{
+    color: white;
+    background-color: rgb(5, 5, 33);
+    position: relative;
+    height: 75vh;
+    overflow-y: scroll;
+}
+.rs-profile {
+    display: flex;
+    flex-direction: column;  /* stack items vertically */
+    align-items: center;     /* center horizontally */
+    text-align: center;      /* center text */
+    padding: 20px;
+  }
+  
+  .rs-profile img {
+    width: 100px;            /* image size */
+    height: 100px;
+    border-radius: 50%;      /* makes image round */
+    object-fit: cover;       /* prevents image distortion */
+    margin-bottom: 10px;     /* space below image */
+  }
+  
+  .rs-profile h3 {
+    font-size: 20px;
+    margin: 5px 0px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+  }
+  
+  .rs-profile h3 .dot {
+    width: 20px;
+    height:20px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  
+  .rs-profile p {
+    font-size: 20px;
+    color: #f3e9e9;
+    margin: 0;
+    align-items: center;
+    justify-content: center;
+  }
+  .rs hr
+  {
+    border-color: gray;
+    margin: 10px 0;
+  }
+  .rs-media
+  {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    font-size: 25px;
+    flex-wrap: wrap;
+  }
+  .rs-media div{
+    max-height: 200px;
+    cursor: pointer;
+    overflow-y: scroll;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    margin: 10px 0;
+  }
+  .rs-media div img{
+    width: 100px;
+    height:100px;
+    object-fit: cover;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-top: 5px;
+    gap: 5px;
+  }
+  .rs button {
+    position: relative;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgb(31, 209, 209);
+    color: black;
+    font-size: 14px;       /* bigger text */
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    border-radius: 25px;   /* rounded corners */
+    padding: 10px 20px;    /* increases button size */
+    min-width: 120px;      /* optional: define minimum width */
+}

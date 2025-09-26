@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <h1> start should change the backlground colour</h1>
+    <button id="start">start</button>
+    <button id="stop">stop</button>
+     <script>
+        const randomcolour= function()
+        {
+            const hex='0123456789ABCDEF';
+            let colour='#';
+            for(let i=0;i<6;i++)
+        {
+            colour+= hex[Math.floor(Math.random()*16)];
+        }
+        return colour;
+        };
+        //console.log(Math.floor(Math.random()*10));
+        let now;
+        const startchange=function(){
+            if(!now)
+        {
+           now= setInterval(changebgcolour,1000);
+        }
+            function changebgcolour()
+            {
+            document.body.style.backgroundColor=randomcolour();
+            }
+        };
+        const stopchange=function(){
+            clearInterval(now);
+            now=null;
+        }
+        document.querySelector('#start').addEventListener('click', startchange)
+        document.querySelector('#stop').addEventListener('click', stopchange)
+     </script>
+</head>
+<body>
+    
+</body>
+</html>

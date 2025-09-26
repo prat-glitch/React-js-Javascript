@@ -1,0 +1,76 @@
+.profile
+{
+  min-height: 100vh;
+  background: url(/background.png) no-repeat center center fixed;
+  background-size: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-container {
+    background: white;
+    min-width: 700px;
+    min-height: 500px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;       /* vertically centers logo and form */
+    padding: 20px;             /* add padding around content */
+    gap: 30px;                 /* space between image and form */
+}
+
+.profile-pic {
+    width: 160px;            /* fixed width */
+    height: 160px;           /* same as width for circle */
+    border-radius: 50%;      /* makes it perfectly round */
+    display: block;
+    object-fit: cover;       /* ensures image fills the circle */
+    background-color: white; /* optional background */
+}
+
+.profile form{
+    display: flex;
+    flex-direction: column;   /* stack form elements vertically */
+    gap: 20px;                /* space between form elements */
+    width: 100%;              /* full width of the container */
+    max-width: 400px;         /* limit width for better readability */
+    padding: 40px;            /* add padding around form */
+}
+.profile form h3{
+    text-align: center;       /* center the heading */
+    font-weight: 500;
+    font-size:50px;             /* dark color for contrast */
+}
+.profile label
+{
+    display: flex;
+    cursor: pointer;
+    align-items: center; 
+    gap: 10px;   
+    font-size: 20px;  
+    color: black;
+}
+.profile label img{
+    width: 50px;
+    aspect-ratio: 1/1; /* maintain square aspect ratio */
+    border-radius: 50%; /* make it round */
+}
+.profile input, textarea
+{
+    padding: 10px;
+    min-width: 300px;
+    border: 1px solid #ccc; /* light gray border */
+    border-radius: 5px; /* rounded corners */
+    outline-color: rgb(7, 170, 203);
+}
+.profile form button
+{
+    border: none;
+    color: white;
+    border-radius: 5px;
+    background-color: rgb(7, 170, 203);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 10px 20px; 
+    font-weight: 400;/* add padding for better button size */
+}

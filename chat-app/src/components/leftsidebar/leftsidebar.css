@@ -1,0 +1,120 @@
+.ls
+{
+    background: rgb(16, 5, 49);
+    color: white;
+    height: 75vh;
+}
+.ls-top
+{
+    padding: 20px;
+}
+.ls-nav
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.ls-nav.logo
+{
+  max-width: 140px;
+  max-height: 40px;
+  width: 100%;
+}
+.ls-nav .menu img
+{
+    max-height: 20px;
+    opacity: 0.6;
+    cursor: pointer;
+}
+.ls-search
+{
+    background-color: #002670;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    margin-top: 20px;
+}
+.ls-search img{
+    width: 16px;
+}
+.ls-search input
+{
+    background-color: transparent;
+    border: none;
+    color: white;
+    outline: none;
+    width: 100%;
+    font-size: medium;
+}
+.ls-search input::placeholder
+{
+    color: white;
+    opacity: 0.6;
+}
+.ls-list
+{
+    display: flex;
+    flex-direction: column;
+    height: 60%;
+    overflow-y: scroll;
+}
+.freinds img{
+    width: 35px;
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+}
+.freinds{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    cursor: pointer;
+    font-size:25px;
+}
+.freinds div{
+    display: flex;
+    flex-direction: column;
+}
+.freinds span{
+    font-weight: 400;
+    color: rgb(179, 177, 177);
+    font-size:15px;
+}
+.freinds:hover
+{
+    background-color: #002670;
+}
+.freinds:hover span{
+    color: white;
+}
+.ls-nav .menu{
+ position: relative;
+ padding: 10px 0px;
+}
+.menu .submenu
+{
+    position:absolute;
+    top: 100%;
+    right: 0;
+    width: 130px;
+    padding: 20px;
+    border-radius: 5px;
+    background-color: white;
+    color:black;
+    display: none;
+}
+.submenu hr{
+    border: none;
+    height: 1px;
+    background-color: rgb(12, 7, 7);
+    margin: 8px 0px;   
+}
+.submenu p{
+    cursor: pointer;
+    font-size: 15px;
+}
+.menu:hover .submenu
+{
+    display: block;
+}

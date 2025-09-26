@@ -1,0 +1,62 @@
+[
+    {
+      "question": "What is JavaScript primarily used for?",
+      "options": ["Styling", "Markup", "Programming", "Databases"],
+      "answer": "Programming",
+      "difficulty": "easy"
+    },
+    {
+      "question": "Which keyword is used to declare a variable in JavaScript?",
+      "options": ["var", "let", "const", "All of the above"],
+      "answer": "All of the above",
+      "difficulty": "easy"
+    },
+    {
+      "question": "Which of the following is NOT a JavaScript data type?",
+      "options": ["String", "Boolean", "Float", "Number"],
+      "answer": "Float",
+      "difficulty": "easy"
+    },
+    {
+      "question": "What does '===' mean in JavaScript?",
+      "options": ["Assignment", "Equals", "Strict equality", "Loose equality"],
+      "answer": "Strict equality",
+      "difficulty": "medium"
+    },
+    {
+      "question": "Which built-in method converts a string to lowercase?",
+      "options": ["lower()", "toLowerCase()", "convertLower()", "changeCase()"],
+      "answer": "toLowerCase()",
+      "difficulty": "easy"
+    },
+    {
+      "question": "What will `typeof NaN` return?",
+      "options": ["number", "NaN", "undefined", "object"],
+      "answer": "number",
+      "difficulty": "medium"
+    },
+    {
+      "question": "Which company developed JavaScript?",
+      "options": ["Microsoft", "Google", "Netscape", "Oracle"],
+      "answer": "Netscape",
+      "difficulty": "easy"
+    },
+    {
+      "question": "What does DOM stand for?",
+      "options": ["Document Object Model", "Data Object Management", "Digital Output Method", "None of the above"],
+      "answer": "Document Object Model",
+      "difficulty": "easy"
+    },
+    {
+      "question": "What will `console.log(2 + '2')` output?",
+      "options": ["4", "22", "undefined", "NaN"],
+      "answer": "22",
+      "difficulty": "medium"
+    },
+    {
+      "question": "Which function is used to delay execution in JavaScript?",
+      "options": ["setTimeout()", "setInterval()", "delay()", "wait()"],
+      "answer": "setTimeout()",
+      "difficulty": "medium"
+    }
+  ]

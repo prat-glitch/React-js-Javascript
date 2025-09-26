@@ -1,0 +1,33 @@
+/* Base button styles */
+button {
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+/* Normal state */
+button.outline-none.bg-blue-700 {
+  background-color: #17b346; /* blue-700 */
+  color: white;
+}
+
+/* Hover state */
+button.outline-none.bg-blue-700:hover {
+  background-color: #e0dc17; /* blue-800 */
+  transform: scale(1.02);
+}
+
+/* Click/active state */
+button.outline-none.bg-blue-700:active {
+  background-color: #1e3a8a; /* blue-900 */
+  transform: scale(0.98);
+}
+
+/* After click (you can toggle this class in your copyPasswordToClipboard function) */
+button.copied {
+  background-color: #10b981; /* emerald-500 */
+}
+
+/* Hover state after copied */
+button.copied:hover {
+  background-color: #059669; /* emerald-600 */
+}
