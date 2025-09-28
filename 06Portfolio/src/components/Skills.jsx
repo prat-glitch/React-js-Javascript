@@ -30,8 +30,7 @@ const Skills = () => {
         { name: 'React/Next.js', level: 95, experience: '5+ years' },
         { name: 'JavaScript/TypeScript', level: 90, experience: '4+ years' },
         { name: 'Tailwind CSS', level: 92, experience: '3+ years' },
-        { name: 'Material-UI', level: 88, experience: '3+ years' },
-        { name: 'Vue.js', level: 75, experience: '2+ years' }
+        { name: 'Material-UI', level: 88, experience: '3+ years' }
       ]
     },
     {
@@ -39,11 +38,10 @@ const Skills = () => {
       icon: <StorageIcon sx={{ fontSize: 24 }} />,
       color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
       skills: [
-        { name: 'Node.js/Express', level: 85, experience: '4+ years' },
-        { name: 'Python/Django', level: 80, experience: '3+ years' },
-        { name: 'PostgreSQL', level: 82, experience: '3+ years' },
+        { name: 'Node.js/Express', level: 85, experience: '2+ years' },
+        { name: 'PostgreSQL', level: 82, experience: '2+ years' },
         { name: 'MongoDB', level: 78, experience: '2+ years' },
-        { name: 'GraphQL', level: 70, experience: '2+ years' }
+        { name: 'Firebase', level: 70, experience: '2+ years' }
       ]
     },
     {
@@ -51,11 +49,9 @@ const Skills = () => {
       icon: <BuildIcon sx={{ fontSize: 24 }} />,
       color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
       skills: [
-        { name: 'Git/GitHub', level: 90, experience: '5+ years' },
-        { name: 'Docker', level: 75, experience: '2+ years' },
+        { name: 'Git/GitHub', level: 90, experience: '5+ years' },,
         { name: 'AWS', level: 70, experience: '2+ years' },
         { name: 'Figma', level: 85, experience: '3+ years' },
-        { name: 'Jest/Testing', level: 80, experience: '3+ years' }
       ]
     }
   ];

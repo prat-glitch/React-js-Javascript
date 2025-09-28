@@ -25,10 +25,10 @@ const About = () => {
   const features = [
     {
       icon: <CodeIcon sx={{ fontSize: 32 }} />,
-      title: 'Clean Code',
-      description: 'Writing maintainable, scalable, and efficient code following best practices and industry standards.',
-      color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      stats: '5+ years experience'
+title: 'Competitive Programming',
+description: 'Expert in algorithms and data structures, solving complex problems efficiently.',
+color: 'linear-gradient(135deg, #5f72bd 0%, #9f5de2 100%)', // Slightly different purple/blue gradient
+stats: 'solved 300+ problems across platforms'
     },
     {
       icon: <DesignIcon sx={{ fontSize: 32 }} />,
@@ -39,7 +39,7 @@ const About = () => {
     },
     {
       icon: <SpeedIcon sx={{ fontSize: 32 }} />,
-      title: 'Fast Performance',
+      title: 'Performance Optimization',
       description: 'Optimizing applications for speed and performance to deliver the best user experience.',
       color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
       stats: '99% uptime achieved'
@@ -47,10 +47,9 @@ const About = () => {
   ];
 
   const achievements = [
-    { number: '50+', label: 'Projects Completed', icon: <WorkIcon /> },
-    { number: '5+', label: 'Years Experience', icon: <TrendingUpIcon /> },
-    { number: '30+', label: 'Happy Clients', icon: <PersonIcon /> },
-    { number: '100%', label: 'Client Satisfaction', icon: <StarIcon /> }
+    { number: '10+', label: 'Projects Completed', icon: <WorkIcon /> },
+    { number: '2+', label: 'Years Experience', icon: <TrendingUpIcon /> },
+    { number: '4+', label:'hackathons perticipated', icon: <StarIcon /> },
   ];
 
 
@@ -134,7 +133,7 @@ const About = () => {
               lineHeight: 1.6
             }}
           >
-            I'm a passionate full-stack developer with 5+ years of experience creating digital experiences 
+            I'm a passionate full-stack developer with 2+ years of experience creating digital experiences 
             that are not only functional but also beautiful. I love turning complex problems into simple, 
             elegant solutions that make a real impact.
           </Typography>

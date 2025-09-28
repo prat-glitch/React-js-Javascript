@@ -26,27 +26,15 @@ import { motion } from 'framer-motion';
 const Projects = () => {
   const projects = [
     {
-      title: 'E-Commerce Platform',
+      title: 'AI-Mentor',
       description: 'A full-stack e-commerce solution with React, Node.js, and PostgreSQL. Features include user authentication, payment processing, and admin dashboard.',
       image: 'https://images.pexels.com/photos/230544/pexels-photo-230544.jpeg?auto=compress&cs=tinysrgb&w=800',
-      technologies: ['React', 'Node.js', 'PostgreSQL', 'Stripe'],
-      github: '#',
-      demo: '#',
+      technologies: ['React', 'Node.js', 'Mongodb', 'Mockapi', 'Tailwind Css', 'Material UI'],
+      github: 'https://github.com/prat-glitch/AI_MENTOR',
+      demo: 'https://aichat-mu-six.vercel.app/',
       category: 'Full Stack',
       status: 'Live',
       color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      featured: true
-    },
-    {
-      title: 'Task Management App',
-      description: 'A collaborative task management application with real-time updates, drag-and-drop functionality, and team collaboration features.',
-      image: 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=800',
-      technologies: ['React', 'JavaScript', 'Socket.io', 'MongoDB'],
-      github: '#',
-      demo: '#',
-      category: 'Web App',
-      status: 'Live',
-      color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
       featured: true
     },
     {
@@ -83,18 +71,6 @@ const Projects = () => {
       category: 'Education',
       status: 'Live',
       color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-      featured: false
-    },
-    {
-      title: 'Cryptocurrency Tracker',
-      description: 'A real-time cryptocurrency tracking application with portfolio management and price alerts.',
-      image: 'https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=800',
-      technologies: ['React', 'Redux', 'CoinGecko API', 'Material-UI'],
-      github: '#',
-      demo: '#',
-      category: 'Finance',
-      status: 'Live',
-      color: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
       featured: false
     }
   ];

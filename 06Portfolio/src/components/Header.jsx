@@ -123,11 +123,11 @@ const Header = () => {
                 fontWeight: "bold"
               }}
             >
-              JD
+              PG
             </Avatar>
             <div>
               <Typography variant="h6" sx={{ color: "white", fontWeight: 600, fontSize: "16px" }}>
-                John Doe
+                Pratyush Ghosh
               </Typography>
               <Typography variant="caption" sx={{ color: "#a78bfa", fontSize: "12px" }}>
                 Full Stack Developer
@@ -248,7 +248,7 @@ const Header = () => {
                   boxShadow: "0 4px 20px rgba(102, 126, 234, 0.3)"
                 }}
               >
-                JD
+                PG
               </Avatar>
               <Box>
                 <Typography 
@@ -260,7 +260,7 @@ const Header = () => {
                     lineHeight: 1.2
                   }}
                 >
-                  John Doe
+                 Pratyush Ghosh
                 </Typography>
                 <Typography 
                   variant="caption" 

@@ -31,7 +31,7 @@ const Hero = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
           >
             <Typography variant="h1" className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6">
-              <span className="text-gradient">John Doe</span>
+              <span className="text-gradient">Pratyush Ghosh</span>
             </Typography>
           </motion.div>
 
@@ -41,7 +41,7 @@ const Hero = () => {
             transition={{ duration: 0.8, delay: 0.4 }}
           >
             <Typography variant="h4" className="text-xl md:text-2xl lg:text-3xl text-gray-300 mb-8 font-light">
-              Full Stack Developer & UI/UX Designer
+              Full Stack Developer & UI/UX Designer & Competitive Programmer
             </Typography>
           </motion.div>
 
@@ -63,6 +63,13 @@ const Hero = () => {
             className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
           >
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <a
+    href="/PratyushGhoshCV.pdf"
+    download
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{ textDecoration: 'none' }}
+  >
               <Button
                 variant="contained"
                 size="large"
@@ -71,6 +78,7 @@ const Hero = () => {
               >
                 Download CV
               </Button>
+              </a>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
@@ -91,7 +99,7 @@ const Hero = () => {
             className="flex justify-center space-x-6"
           >
             <motion.a 
-              href="#" 
+              href="https://github.com/prat-glitch" 
               className="text-gray-400 hover:text-purple-400 transition-all duration-300 p-3 rounded-full hover:bg-white/10"
               whileHover={{ scale: 1.2, rotate: 5 }}
               whileTap={{ scale: 0.9 }}
@@ -99,7 +107,7 @@ const Hero = () => {
               <GitHubIcon className="w-7 h-7" />
             </motion.a>
             <motion.a 
-              href="#" 
+              href="https://www.linkedin.com/in/pratyush-ghosh/" 
               className="text-gray-400 hover:text-purple-400 transition-all duration-300 p-3 rounded-full hover:bg-white/10"
               whileHover={{ scale: 1.2, rotate: -5 }}
               whileTap={{ scale: 0.9 }}
