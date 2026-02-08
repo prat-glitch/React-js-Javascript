@@ -52,9 +52,11 @@ export const signup = async (username, email, password) => {
     });
 
     await ensureUserChatsDoc(user.uid);
+    return true; // Success
   } catch (error) {
     console.error(error);
     toast.error(error.code.split("/")[1].split("-").join(" "));
+    return false;
   }
 };
 

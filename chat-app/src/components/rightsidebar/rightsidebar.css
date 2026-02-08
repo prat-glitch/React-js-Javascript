@@ -77,18 +77,49 @@
     margin-top: 5px;
     gap: 5px;
   }
+
+  .rs-info {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  .rs-info p {
+    color: #ccc;
+    margin: 5px 0;
+  }
+
   .rs button {
-    position: relative;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    display: block;
+    margin: 10px auto;
     background-color: rgb(31, 209, 209);
     color: black;
-    font-size: 14px;       /* bigger text */
+    font-size: 14px;
     font-weight: 500;
     border: none;
     cursor: pointer;
-    border-radius: 25px;   /* rounded corners */
-    padding: 10px 20px;    /* increases button size */
-    min-width: 120px;      /* optional: define minimum width */
+    border-radius: 25px;
+    padding: 10px 20px;
+    min-width: 120px;
+    transition: background-color 0.2s;
+  }
+
+  .rs button:hover {
+    background-color: rgb(20, 180, 180);
+  }
+
+  .rs button:last-child {
+    background-color: #ff4757;
+    color: white;
+  }
+
+  .rs button:last-child:hover {
+    background-color: #ff3344;
+  }
+
+.no-media {
+    color: #888;
+    font-size: 14px;
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 20px;
 }

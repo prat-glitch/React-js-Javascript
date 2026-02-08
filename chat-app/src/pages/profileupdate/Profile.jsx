@@ -1,18 +1,12 @@
 import React, { useState, useContext, useEffect } from 'react';
 import './profile.css';
 import assets from '../../assets/assets';
-import ImageKit from 'imagekit-javascript';
 import { toast } from "react-toastify";
 import { useNavigate } from 'react-router-dom';
 import { db } from '../../config/firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { Appcontext } from '../../context/AppContext';
-
-const imagekit = new ImageKit({
-  publicKey: "public_QNONAWZ6yKSuzoKyG1Ruo3u8cX8=",
-  urlEndpoint: "https://ik.imagekit.io/prat123",
-  authenticationEndpoint: "http://localhost:5000/auth"
-});
+import { Appcontext } from '../../context/Appcontext';
+import { supabase } from '../../config/supabase';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -53,11 +47,6 @@ const Profile = () => {
       return;
     }
 
-    if (!image) {
-      toast.error("Please select an image first");
-      return;
-    }
-
     if (!name.trim()) {
       toast.error("Please enter your name");
       return;
@@ -66,30 +55,39 @@ const Profile = () => {
     try {
       setUploading(true);
 
-      const authRes = await fetch("http://localhost:5000/auth");
-      const auth = await authRes.json();
+      let imageUrl = previmage; // Use existing image by default
 
-      if (!auth.token || !auth.signature || !auth.expire) {
-        toast.error("Failed to get ImageKit auth token");
-        setUploading(false);
-        return;
+      // Only upload if new image selected
+      if (image) {
+        const fileExt = image.name.split('.').pop();
+        const fileName = `${user.uid}_${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        const { data, error } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, image, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (error) {
+          toast.error("Failed to upload image");
+          console.error(error);
+          setUploading(false);
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        imageUrl = urlData.publicUrl;
+        setUploadedUrl(imageUrl);
+        setPrevImage(imageUrl);
       }
 
-      const result = await imagekit.upload({
-        file: image,
-        fileName: `${Date.now()}_${image.name}`,
-        folder: "/profile_pics",
-        token: auth.token,
-        expire: auth.expire,
-        signature: auth.signature,
-      });
-
-      setUploadedUrl(result.url);
-      setPrevImage(result.url); 
-      toast.success("Image uploaded successfully!");
-
       await updateDoc(doc(db, "users", user.uid), {
-        avatar: result.url,
+        avatar: imageUrl,
         username: name.trim(),
         bio: bio.trim(),
         profileCompleted: true,

@@ -27,6 +27,7 @@ const Appcontextprovider = (props) => {
   const [allUsers, setAllUsers] = useState([]);
   const [selectedChatUser, setSelectedChatUser] = useState(null);
   const [lastSeenIntervalId, setLastSeenIntervalId] = useState(null);
+  const [unreadChats, setUnreadChats] = useState({}); // {recipientId: count}
 
   // ---------- Auth state ----------
   useEffect(() => {
@@ -115,6 +116,16 @@ const Appcontextprovider = (props) => {
     return () => unsub();
   }, []);
 
+  // Keep selectedChatUser in sync with latest data (for lastseen updates)
+  useEffect(() => {
+    if (selectedChatUser && allUsers.length > 0) {
+      const updatedUser = allUsers.find(u => u.uid === selectedChatUser.uid);
+      if (updatedUser && updatedUser.lastseen !== selectedChatUser.lastseen) {
+        setSelectedChatUser(updatedUser);
+      }
+    }
+  }, [allUsers]);
+
   // ---------- Realtime: my chat list (userChats/{uid}) ----------
   useEffect(() => {
     if (!userdata?.uid) return;
@@ -123,11 +134,43 @@ const Appcontextprovider = (props) => {
       // sort desc by updatedAt numeric
       list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
       setUserChats(list);
+      
+      // Update unread counts (mark as unread if not currently viewing that chat)
+      const newUnread = {};
+      list.forEach(chat => {
+        if (chat.unread && chat.recipientId !== selectedChatUser?.uid) {
+          newUnread[chat.recipientId] = chat.unread;
+        }
+      });
+      setUnreadChats(newUnread);
     }, (err) => {
       console.error("userChats listener error:", err);
     });
     return () => unsub();
-  }, [userdata?.uid]);
+  }, [userdata?.uid, selectedChatUser?.uid]);
+
+  // Clear unread when selecting a chat
+  const markChatAsRead = async (recipientId) => {
+    if (!userdata?.uid || !recipientId) return;
+    try {
+      const userChatsRef = doc(db, "userChats", userdata.uid);
+      const snap = await getDoc(userChatsRef);
+      if (snap.exists()) {
+        const chatdata = snap.data().chatdata || [];
+        const updated = chatdata.map(c => 
+          c.recipientId === recipientId ? { ...c, unread: 0 } : c
+        );
+        await updateDoc(userChatsRef, { chatdata: updated });
+      }
+      setUnreadChats(prev => {
+        const copy = { ...prev };
+        delete copy[recipientId];
+        return copy;
+      });
+    } catch (err) {
+      console.error("Error marking chat as read:", err);
+    }
+  };
 
   const value = useMemo(() => ({
     user,
@@ -137,7 +180,10 @@ const Appcontextprovider = (props) => {
     selectedChatUser,
     setSelectedChatUser,
     getChatId,
-  }), [user, userdata, allUsers, userChats, selectedChatUser]);
+    loaduserdata,
+    unreadChats,
+    markChatAsRead,
+  }), [user, userdata, allUsers, userChats, selectedChatUser, unreadChats]);
 
   return (
     <Appcontext.Provider value={value}>

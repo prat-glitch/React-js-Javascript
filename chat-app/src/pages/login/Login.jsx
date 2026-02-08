@@ -2,19 +2,27 @@ import React, { useState } from 'react'
 import './login.css'
 import assets from '../../assets/assets' 
 import { signup, Login as loginUser } from '../../config/firebase'
+import { useNavigate } from 'react-router-dom'
 
 const Login = () => {
+  const navigate = useNavigate();
   const [currstate, setcurrstate] = useState('Sign Up');
   const [username, setusername] = useState('');
   const [email, setemail] = useState('');
   const [password, setpassword] = useState('');
 
-  const onsubmithandler = (event) => {
+  const onsubmithandler = async (event) => {
     event.preventDefault();
     if (currstate === "Sign Up") {
-      signup(username, email, password);
+      const success = await signup(username, email, password);
+      if (success) {
+        navigate('/profile');
+      }
     } else {
-      loginUser(email, password);
+      const user = await loginUser(email, password);
+      if (user) {
+        // Context will handle redirect based on profile completion
+      }
     }
   }
 
