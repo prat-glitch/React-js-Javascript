@@ -7,9 +7,11 @@ import { db } from '../../config/firebase'
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, arrayUnion } from 'firebase/firestore'
 import { supabase } from '../../config/supabase'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom'
 
 const Chatbox = () => {
   const { userdata, selectedChatUser, getChatId } = useContext(Appcontext)
+  const navigate = useNavigate()
   const { 
     socket, 
     isConnected, 
@@ -29,6 +31,8 @@ const Chatbox = () => {
   const [typingIndicator, setTypingIndicator] = useState(false)
   const messagesEndRef = useRef(null)
   const currentChatIdRef = useRef(null)
+  const typingTimeoutRef = useRef(null)
+  const isTypingRef = useRef(false)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -42,19 +46,35 @@ const Chatbox = () => {
     
     // Leave previous room if any
     if (currentChatIdRef.current && currentChatIdRef.current !== chatId) {
+      // Stop typing in previous chat
+      if (isTypingRef.current) {
+        stopTyping(currentChatIdRef.current)
+        isTypingRef.current = false
+      }
       leaveChat(currentChatIdRef.current)
     }
+    
+    // Reset typing indicator for new chat
+    setTypingIndicator(false)
     
     // Join new room
     joinChat(chatId)
     currentChatIdRef.current = chatId
 
     return () => {
+      // Cleanup: stop typing and clear timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+      if (isTypingRef.current && currentChatIdRef.current) {
+        stopTyping(currentChatIdRef.current)
+        isTypingRef.current = false
+      }
       if (currentChatIdRef.current) {
         leaveChat(currentChatIdRef.current)
       }
     }
-  }, [userdata?.uid, selectedChatUser?.uid, getChatId, joinChat, leaveChat])
+  }, [userdata?.uid, selectedChatUser?.uid, getChatId, joinChat, leaveChat, stopTyping])
 
   // Listen for Socket.IO message events
   useEffect(() => {
@@ -120,6 +140,12 @@ const Chatbox = () => {
     const text = input.trim()
     setInput('')
     setSending(true)
+    
+    // Stop typing indicator
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+    isTypingRef.current = false
     stopTyping(getChatId(userdata.uid, selectedChatUser.uid))
 
     try {
@@ -262,14 +288,45 @@ const Chatbox = () => {
 
   // Handle input change with typing indicator
   const handleInputChange = (e) => {
-    setInput(e.target.value)
-    if (e.target.value && selectedChatUser?.uid) {
-      startTyping(getChatId(userdata.uid, selectedChatUser.uid))
+    const value = e.target.value
+    setInput(value)
+    
+    if (!selectedChatUser?.uid || !userdata?.uid) return
+    
+    const chatId = getChatId(userdata.uid, selectedChatUser.uid)
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+    
+    if (value.trim()) {
+      // Start typing if not already typing
+      if (!isTypingRef.current) {
+        isTypingRef.current = true
+        startTyping(chatId)
+      }
+      
+      // Auto-stop typing after 1 seconds of no input
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingRef.current = false
+        stopTyping(chatId)
+      }, 1000)
+    } else {
+      // Input is empty, stop typing immediately
+      isTypingRef.current = false
+      stopTyping(chatId)
     }
   }
 
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const handleStartCall = (callType) => {
+    if (!userdata?.uid || !selectedChatUser?.uid) return
+    const chatId = getChatId(userdata.uid, selectedChatUser.uid)
+    navigate(`/call/${chatId}?type=${callType}`)
   }
 
   // No chat selected
@@ -294,13 +351,19 @@ const Chatbox = () => {
             {selectedChatUser.username}
             {isUserOnline(selectedChatUser.uid) && <img className="dot" src={assets.green_dot} alt="Online" />}
           </p>
-          <span className={`chat-user-status ${isUserOnline(selectedChatUser.uid) ? 'online' : 'offline'}`}>
-            {isUserOnline(selectedChatUser.uid) 
-              ? 'Online' 
-              : selectedChatUser.lastseen 
-                ? `Last seen: ${selectedChatUser.lastseen}` 
-                : 'Offline'}
+          <span className={`chat-user-status ${typingIndicator ? 'typing' : isUserOnline(selectedChatUser.uid) ? 'online' : 'offline'}`}>
+            {typingIndicator 
+              ? 'typing...'
+              : isUserOnline(selectedChatUser.uid) 
+                ? 'Online' 
+                : selectedChatUser.lastseen 
+                  ? `Last seen: ${selectedChatUser.lastseen}` 
+                  : 'Offline'}
           </span>
+        </div>
+        <div className="call-actions">
+          <button className="call-btn" onClick={() => handleStartCall('audio')}>Audio</button>
+          <button className="call-btn" onClick={() => handleStartCall('video')}>Video</button>
         </div>
         <img src={assets.help_icon} className="help" alt="Help" />
         {!isConnected && <span className="socket-status offline">Disconnected</span>}
@@ -324,7 +387,7 @@ const Chatbox = () => {
         {typingIndicator && (
           <div className="typing-indicator">
             <span>{selectedChatUser.username} is typing</span>
-            <span className="dots"><span>.</span><span>.</span><span>.</span></span>
+            <span className="dots"><span></span><span></span><span></span></span>
           </div>
         )}
         <div ref={messagesEndRef} />

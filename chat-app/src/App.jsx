@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Login from './pages/login/Login.jsx';
 import Chat from './pages/chat/Chat.jsx';
 import Profile from './pages/profileupdate/Profile.jsx';
+import Call from './pages/call/Call.jsx';
 import { ToastContainer } from 'react-toastify';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase.js';
@@ -41,6 +42,7 @@ const App = () => {
         <Route path="/" element={<Login />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/call/:roomId" element={<Call />} />
       </Routes>
     </>
   );
