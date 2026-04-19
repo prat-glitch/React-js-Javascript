@@ -60,8 +60,11 @@ const Profile = () => {
         username: name.trim(),
         bio: bio.trim(),
         profileCompleted: true,
+        online: true,
+        lastseen: new Date().toLocaleString(),
       });
 
+      // After a successful database update, navigation immediately ensues.
       toast.success("Profile saved!");
       navigate("/chat");
     } catch (error) { toast.error("Something went wrong"); }

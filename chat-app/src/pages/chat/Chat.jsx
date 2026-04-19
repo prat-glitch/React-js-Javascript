@@ -53,10 +53,9 @@ const Chat = () => {
         
         {/* Navigation Rail & Sidebar Column */}
         <div className={`
-          flex-shrink-0 flex
-          ${mobileView === 'sidebar' ? 'w-full' : 'hidden'} md:flex
-          md:w-[320px] lg:w-[380px]
-          h-full
+          flex-shrink-0 lg:flex h-full
+          ${mobileView === 'sidebar' ? 'w-full flex' : 'hidden'} md:flex
+          md:w-[320px] lg:w-[440px] xl:w-[480px]
         `}>
           <Leftsidebar setMobileView={setMobileView} />
         </div>
@@ -65,7 +64,7 @@ const Chat = () => {
         <div className={`
           flex-1 h-full min-w-0 flex flex-col
           ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex
-          bg-white border-l border-slate-50
+          bg-white border-l border-[#f4f6fa] relative
         `}>
           <Chatbox setMobileView={setMobileView} />
         </div>

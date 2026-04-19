@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
 :root {
   --fluid-bg: #f5f7fb;
@@ -24,7 +24,6 @@ body {
   background-color: var(--fluid-bg);
   color: var(--fluid-text-main);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
 }
 
 /* ── Custom Scrollbar ── */
