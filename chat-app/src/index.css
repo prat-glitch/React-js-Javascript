@@ -1,13 +1,83 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-@import url('https://fonts.googleapis.com/css2?family=Libertinus+Serif:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
-*  
-{ 
-  padding: 0; 
-  margin: 0; 
-  box-sizing: border-box;
-  font-family: poppins;  
+:root {
+  --fluid-bg: #f5f7fb;
+  --fluid-sidebar: #101c3d;
+  --fluid-sidebar-active: #1d2b55;
+  --fluid-primary: #2563eb;
+  --fluid-accent: #3b82f6;
+  --fluid-text-main: #1e293b;
+  --fluid-text-muted: #64748b;
+  --fluid-success: #10b981;
+  --fluid-card-bg: #ffffff;
 }
-::-webkit-scrollbar
-{
-  display: none;
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  background-color: var(--fluid-bg);
+  color: var(--fluid-text-main);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Glassmorphism & Shadows ── */
+.fluid-card {
+  background: var(--fluid-card-bg);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  border-radius: 2rem;
+}
+
+.fluid-shadow-soft {
+  box-shadow: 0 20px 50px rgba(8, 112, 184, 0.07);
+}
+
+.nav-rail-item {
+  @apply flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300;
+}
+
+.nav-rail-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-rail-item.active {
+  background-color: var(--fluid-primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* ── Status Pill ── */
+.status-pill {
+  @apply px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5;
+}
+
+.status-online {
+  background-color: #ecfdf5;
+  color: #059669;
+}
+
+.status-offline {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+/* ── Message Animations ── */
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.message-animate {
+  animation: messageIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }

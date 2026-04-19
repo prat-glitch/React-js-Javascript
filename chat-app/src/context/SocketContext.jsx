@@ -200,6 +200,31 @@ export const SocketProvider = ({ children }) => {
     },
     [typingUsers]
   );
+  
+  // Call Initiation
+  const initiateCall = useCallback(
+    (recipientId, chatId, callType) => {
+      if (socket && isConnected && userdata?.uid) {
+        socket.emit('call:initiate', {
+          callerId: userdata.uid,
+          callerName: userdata.username || 'Someone',
+          recipientId,
+          chatId,
+          callType
+        });
+      }
+    },
+    [socket, isConnected, userdata]
+  );
+
+  const rejectCall = useCallback(
+    (callerId) => {
+      if (socket && isConnected) {
+        socket.emit('call:reject', { callerId });
+      }
+    },
+    [socket, isConnected]
+  );
 
   const value = {
     socket,
@@ -213,6 +238,8 @@ export const SocketProvider = ({ children }) => {
     markAsRead,
     isUserOnline,
     getTypingUsers,
+    initiateCall,
+    rejectCall,
   };
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

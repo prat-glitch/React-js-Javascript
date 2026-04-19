@@ -8,6 +8,7 @@ import { ToastContainer } from 'react-toastify';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase.js';
 import { Appcontext } from './context/Appcontext.jsx';
+import IncomingCallNotification from './components/notifications/IncomingCallNotification.jsx';
 
 const App = () => {
   const navigate = useNavigate();
@@ -38,6 +39,7 @@ const App = () => {
   return (
     <>
       <ToastContainer />
+      <IncomingCallNotification />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/chat" element={<Chat />} />

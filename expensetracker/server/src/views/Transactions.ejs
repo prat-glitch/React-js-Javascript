@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Transactions</title>
+        <style>
+            body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 24px; }
+            h1 { margin-bottom: 12px; }
+            ul { list-style: none; padding: 0; margin: 0; }
+            li { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+            .meta { color: #475569; font-size: 13px; }
+            .amount { font-weight: 600; color: #0f172a; }
+            .empty { color: #94a3b8; font-size: 14px; margin-top: 6px; }
+        </style>
+</head>
+<body>
+    <h1>Your Transactions</h1>
+    <div>
+        <% if (transactions && transactions.length) { %>
+            <ul>
+                <% transactions.forEach(function(transaction) { %>
+                    <li>
+                        <div><strong><%= transaction.description || 'No description' %></strong></div>
+                        <div class="meta">
+                            <span class="amount">₹<%= transaction.amount || 0 %></span>
+                            &nbsp;•&nbsp;
+                            <span><%= (transaction.date ? new Date(transaction.date).toDateString() : 'No date') %></span>
+                        </div>
+                    </li>
+                <% }); %>
+            </ul>
+        <% } else { %>
+            <p class="empty">No transactions found.</p>
+        <% } %>
+    </div>
+</body>
+</html>

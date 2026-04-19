@@ -1,0 +1,22 @@
+﻿# Deployment Steps
+
+## 1. Deploy Backend to Vercel:
+   - Go to vercel.com and sign in
+   - Click 'New Project'
+   - Import your repository
+   - Set Root Directory to: server
+   - Add Environment Variables:
+     - MONGO_URI = mongodb+srv://pratyush:pratyush%40009@cluster0.ohnmrre.mongodb.net/expensetracker?appName=Cluster0
+     - JWT_SECRET = expense_tracker_secret_key_2026
+   - Deploy!
+   - Copy your backend URL (e.g., https://your-backend.vercel.app)
+
+## 2. Deploy Frontend to Vercel:
+   - Click 'New Project' again
+   - Import same repository
+   - Set Root Directory to: client
+   - Add Environment Variables:
+     - VITE_API_URL = https://your-backend.vercel.app/api
+   - Deploy!
+
+## Your app should now work in production!

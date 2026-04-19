@@ -163,6 +163,37 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Call Signaling
+  // Call Signaling
+  socket.on('call:initiate', (data) => {
+    console.log("🚨 BACKEND RECEIVED CALL REQUEST:", data);
+
+    // Safely extract variables (handles multiple naming conventions)
+    const targetUser = data.recipientId || data.to;
+    const sender = data.callerId || data.from;
+    const room = data.chatId || data.roomId;
+    const type = data.callType || data.type;
+    const name = data.callerName;
+
+    console.log(`📞 Routing call from ${name} to user:${targetUser}`);
+
+    // Forward to the exact user's personal room
+    io.to(`user:${targetUser}`).emit('call:incoming', {
+      callerId: sender,
+      callerName: name,
+      chatId: room,
+      callType: type
+    });
+  });
+
+  socket.on('call:reject', (data) => {
+    // Safely extract the person we are rejecting
+    const callerId = data.callerId || data.to;
+    console.log(`❌ Call rejected. Notifying user:${callerId}`);
+    
+    io.to(`user:${callerId}`).emit('call:rejected');
+  });
+
   // Message read receipt
   socket.on('message:read', async ({ chatId, userId, messageTimestamp }) => {
     try {
@@ -239,28 +270,30 @@ async function updateUserChats(ownerId, partnerId, lastMsg, isRecipient) {
     const data = snap.data();
     let chatdata = data.chatdata || [];
 
-    const existingIndex = chatdata.findIndex((c) => c.odId === partnerId);
+    const existingChat = chatdata.find((c) => c.recipientId === partnerId);
+    const currentUnread = existingChat?.unread || 0;
 
-    if (existingIndex !== -1) {
-      chatdata[existingIndex] = {
-        ...chatdata[existingIndex],
-        lastMessage: lastMsg,
-        updatedAt: Date.now(),
-        messageSeen: !isRecipient,
-      };
-    } else {
-      chatdata.push({
-        odId: partnerId,
-        lastMessage: lastMsg,
-        updatedAt: Date.now(),
-        messageSeen: !isRecipient,
-      });
-    }
+    chatdata = chatdata.filter((c) => c.recipientId !== partnerId);
 
-    // Sort by most recent
-    chatdata.sort((a, b) => b.updatedAt - a.updatedAt);
+    chatdata.push({
+      recipientId: partnerId,
+      lastMsg: lastMsg,
+      updatedAt: Date.now(),
+      unread: isRecipient ? currentUnread + 1 : 0,
+    });
 
     await userChatsRef.update({ chatdata });
+  } else {
+    await userChatsRef.set({
+      chatdata: [
+        {
+          recipientId: partnerId,
+          lastMsg: lastMsg,
+          updatedAt: Date.now(),
+          unread: isRecipient ? 1 : 0,
+        },
+      ],
+    });
   }
 }
 

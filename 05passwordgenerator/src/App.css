@@ -6,7 +6,7 @@ button {
 
 /* Normal state */
 button.outline-none.bg-blue-700 {
-  background-color: #17b346; /* blue-700 */
+  background-color: #090b09; /* blue-700 */
   color: white;
 }
 
