@@ -9,7 +9,7 @@ import { supabase } from '../../config/supabase';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user } = useContext(Appcontext);
+  const { user, loaduserdata } = useContext(Appcontext);
   const [image, setImage] = useState(null);
   const [previmage, setPrevImage] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -64,7 +64,12 @@ const Profile = () => {
         lastseen: new Date().toLocaleString(),
       });
 
-      // After a successful database update, navigation immediately ensues.
+      // Update the local react state to immediately satisfy Chat validation
+      // We will call the standard context load to populate all global references correctly
+      if (loaduserdata) {
+         await loaduserdata(user.uid);
+      }
+
       toast.success("Profile saved!");
       navigate("/chat");
     } catch (error) { toast.error("Something went wrong"); }

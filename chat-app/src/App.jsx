@@ -21,7 +21,7 @@ const App = () => {
         console.log("✅ Firebase user logged in:", user);
         await loaduserdata(user.uid);
 
-        // ✅ If user is on login page, redirect to chat
+        // Allow navigation cleanly without strictly overriding profile edits midway
         if (location.pathname === "/") {
           navigate("/chat");
         }
