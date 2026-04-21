@@ -40,7 +40,7 @@ const Rightsidebar = () => {
         
         <h3 className="text-xl font-extrabold text-slate-800 mb-1">{displayUser.username}</h3>
         <div className={`status-pill ${online ? 'status-pill status-online' : 'status-pill status-offline'}`}>
-          {online ? 'Active Now' : 'Offline'}
+          {online ? 'Active Now' : displayUser.lastseen ? `Last seen ${displayUser.lastseen}` : 'Offline'}
         </div>
         <p className="mt-4 text-sm text-slate-400 font-medium px-4 leading-relaxed">
           {displayUser.bio || "No bio available. Communication in progress."}
