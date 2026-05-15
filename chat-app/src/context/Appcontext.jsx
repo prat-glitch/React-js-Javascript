@@ -6,8 +6,10 @@ import {
   getDoc,
   updateDoc,
   collection,
-  onSnapshot
+  onSnapshot,
+  serverTimestamp
 } from "firebase/firestore";
+import { onDisconnect } from "firebase/database";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export const Appcontext = createContext();
@@ -95,7 +97,7 @@ const Appcontextprovider = (props) => {
             const currentUser = auth.currentUser;
             if (currentUser) {
               await updateDoc(doc(db, "users", currentUser.uid), {
-                lastseen: new Date().toLocaleString(),
+                lastseen: serverTimestamp(),
               });
             }
           }, 60000);
@@ -130,10 +132,11 @@ const Appcontextprovider = (props) => {
   useEffect(() => {
     if (!userdata?.uid) return;
     const unsub = onSnapshot(doc(db, "userChats", userdata.uid), (snap) => {
+      console.log("userChats updated:", snap.data());
       const list = snap.data()?.chatdata || [];
       // sort desc by updatedAt numeric
       list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-      setUserChats(list);
+      setUserChats([...list]);
       
       // Update unread counts (mark as unread if not currently viewing that chat)
       const newUnread = {};

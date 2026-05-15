@@ -5,6 +5,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
@@ -37,6 +38,32 @@ app.use(express.json());
 const onlineUsers = new Map();
 // Track user sockets: { odId: Set of socketIds }
 const userSockets = new Map();
+
+app.post('/api/auth/supabase-token' , async(req, res) =>{
+  const {firebasetoken} = req.body;
+  if(!firebasetoken) return res.status(400).json({error: 'Firebase token is required'})
+
+  try{
+    // Verify Firebase token
+    const decoded = await admin.auth().verifyIdToken(firebasetoken);
+    
+    const supabasepayload ={
+      aud: 'authenticated',
+      sub: decoded.uid,
+      email: decoded.email,
+      exp: Math.floor(Date.now() / 1000) + (60 * 60), // 1 hour expiry
+      role: 'authenticated'
+    };
+
+    const supabasetoken = jwt.sign(supabasepayload, process.env.SUPABASE_JWT_SECRET);
+
+    res.json({ supabasetoken });
+}
+ catch(error){
+  console.log("Error verifying Firebase token:", error);
+  res.status(401).json({error: 'Invalid Firebase token'});
+ }
+});
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);

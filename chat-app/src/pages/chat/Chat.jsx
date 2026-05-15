@@ -4,6 +4,7 @@ import Chatbox from '../../components/chatbox/Chatbox';
 import Rightsidebar from '../../components/rightsidebar/Rightsidebar';
 import { Appcontext } from '../../context/Appcontext';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import Audiocallbar from '../../components/calls/Audiocallbar';
 
 const Chat = () => {
   const { userdata, selectedChatUser } = useContext(Appcontext);
@@ -39,7 +40,7 @@ const Chat = () => {
   }
 
   return (
-    <div className="relative h-screen w-full overflow-hidden px-4 py-6 md:px-8 md:py-8 flex items-center justify-center bg-[radial-gradient(circle_at_top,_#eef2ff,_#f8fafc_35%,_#f1f5f9_70%,_#e2e8f0_100%)]">
+    <div className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-[radial-gradient(circle_at_top,_#eef2ff,_#f8fafc_35%,_#f1f5f9_70%,_#e2e8f0_100%)]">
       <div className="pointer-events-none absolute -top-32 -left-24 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,_rgba(37,99,235,0.35),_rgba(59,130,246,0.05))] blur-3xl"></div>
       <div className="pointer-events-none absolute top-24 -right-24 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,_rgba(16,185,129,0.25),_rgba(148,163,184,0.05))] blur-3xl"></div>
       <div className="pointer-events-none absolute bottom-[-120px] left-1/3 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,_rgba(99,102,241,0.18),_rgba(255,255,255,0))] blur-3xl"></div>

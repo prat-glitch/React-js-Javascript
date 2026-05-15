@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react"
+import React, { useContext, useMemo, useState } from "react"
 import assets from "../../assets/assets"
 import { Appcontext } from "../../context/Appcontext"
 import { logout } from "../../config/firebase"
@@ -62,7 +62,8 @@ const Sidebar = ({ setMobileView }) => {
     (u) => u.uid !== userdata?.uid && u.username?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const recentChatUsers = userChats
+  const recentChatUsers = useMemo(() =>{
+    return userChats
     .map((chat) => ({
       ...allUsers.find((u) => u.uid === chat.recipientId),
       lastMsg: chat.lastMsg,
@@ -71,6 +72,9 @@ const Sidebar = ({ setMobileView }) => {
     }))
     .filter((u) => u && u.uid)
     .sort((a, b) => b.updatedAt - a.updatedAt)
+  }, [userChats, allUsers])
+    console.log(recentChatUsers);
+    console.log(userChats);
 
   return (
     <div className="flex bg-[#f4f6fb] w-full h-full relative overflow-hidden">
@@ -136,6 +140,7 @@ const Sidebar = ({ setMobileView }) => {
                     isSelected={selectedChatUser?.uid === user.uid}
                     onClick={() => handleSelectUser(user)}
                     isOnline={isUserOnline(user.uid)}
+                    unread={user.unread}
                   />
                 ))
               ) : (
@@ -152,7 +157,7 @@ const Sidebar = ({ setMobileView }) => {
                   isSelected={selectedChatUser?.uid === user.uid}
                   onClick={() => handleSelectUser(user)}
                   isOnline={isUserOnline(user.uid)}
-                  unread={unreadChats[user.uid]}
+                  unread={user.unread}
                 />
               ))}
 

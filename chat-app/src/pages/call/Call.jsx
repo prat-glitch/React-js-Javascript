@@ -6,11 +6,23 @@ import { useSocket } from '../../context/SocketContext';
 import { db } from '../../config/firebase';
 import Sidebar from '../../components/sidebar/Sidebar';
 import Rightsidebar from '../../components/rightsidebar/Rightsidebar';
+import Chat from '../chat/Chat';
 
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' }
+    { urls: 'stun:stun1.l.google.com:19302' },
+
+     {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
   ]
 };
 
@@ -20,12 +32,17 @@ const VideoTile = ({ stream, label, muted = false }) => {
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(console.warn);
     }
   }, [stream]);
 
   return (
     <div className="relative bg-[#050b16] rounded-xl overflow-hidden min-h-[180px]">
-      <video ref={videoRef} className="w-full h-full object-cover bg-[#050b16]" autoPlay playsInline muted={muted} />
+      <video ref={videoRef}
+      autoPlay
+      playsInline
+      muted={muted}
+       className="w-full h-full object-cover bg-[#050b16]" autoPlay playsInline muted={muted} />
       <span className="absolute left-2.5 bottom-2.5 bg-black/60 py-1 px-2 rounded-[10px] text-xs">{label}</span>
     </div>
   );
@@ -49,6 +66,20 @@ const Call = () => {
   const [status, setStatus] = useState('Connecting...');
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(callType === 'audio');
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!isMinimized) return;
+    const timer = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [isMinimized]);
+
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60).toString().padStart(2, '0');
+    const sec = (s % 60).toString().padStart(2, '0');
+    return `${m}:${sec}`;
+  };
 
   const peerConnectionsRef = useRef(new Map());
   const pendingCandidatesRef = useRef(new Map());
@@ -65,11 +96,25 @@ const Call = () => {
   useEffect(() => {
     let cancelled = false;
 
+    // Set call state in session storage so it survives navigating between files
+    sessionStorage.setItem('callType', callType);
+    if (!sessionStorage.getItem('callStartTime')) {
+      sessionStorage.setItem('callStartTime', Date.now().toString());
+    }
+
+    // Allow external components (like Audiocallbar) to maximize the window
+    const handleMax = () => setIsMinimized(false);
+    window.addEventListener('maximize-call', handleMax);
+
     const initMedia = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: callType === 'video',
-          audio: true
+          audio: {
+            echoCancellation: true,
+             noiseSuppression: true,
+             sampleRate: 44100
+          }
         });
 
         if (cancelled) {
@@ -92,6 +137,7 @@ const Call = () => {
 
     return () => {
       cancelled = true;
+      window.removeEventListener('maximize-call', handleMax);
     };
   }, [callType]);
 
@@ -263,8 +309,11 @@ const Call = () => {
         const peerId = change.doc.id;
         if (peerId === userdata.uid) return;
         
-        if (change.type !== 'added' && change.type !== 'removed') {
-          ensurePeerConnection(peerId, initiator);
+        if (change.type==='added') {
+          setTimeout(() => {
+            
+            ensurePeerConnection(peerId, initiator);
+          }, 500);
         }
 
         if (change.type === 'removed') {
@@ -298,6 +347,10 @@ const Call = () => {
     if (cleanedUpRef.current) return;
     cleanedUpRef.current = true;
 
+    // Reset call state
+    sessionStorage.removeItem('callStartTime');
+    sessionStorage.removeItem('callType');
+
     peerConnectionsRef.current.forEach((pc) => pc.close());
     peerConnectionsRef.current.clear();
 
@@ -317,16 +370,16 @@ const Call = () => {
   }, []);
 
   // Foolproof fallback mechanism
-  useEffect(() => {
-    const participantCount = Object.keys(participants).length;
-    const hasActiveCalls = Object.keys(remoteStreams).length > 0;
+  // useEffect(() => {
+  //   const participantCount = Object.keys(participants).length;
+  //   const hasActiveCalls = Object.keys(remoteStreams).length > 0;
 
-    if (participantCount === 1 && hasActiveCalls) {
-      cleanup().then(() => {
-        navigate('/chat', { state: { message: 'Call ended' } });
-      });
-    }
-  }, [participants, remoteStreams, navigate]);
+  //   if (participantCount === 1 && hasActiveCalls) {
+  //     cleanup().then(() => {
+  //       navigate('/chat', { state: { message: 'Call ended' } });
+  //     });
+  //   }
+  // }, [participants, remoteStreams, navigate]);
 
   const handleLeave = async () => {
     // Actively send an end_call signal to the other user so they exit immediately
@@ -335,6 +388,10 @@ const Call = () => {
       await sendSignal({ type: 'end_call', from: userdata.uid, to: peerid });
     }
     
+    // Check if we are still using Callcontext and endcall
+    const event = new CustomEvent("call-ended");
+    window.dispatchEvent(event);
+
     await cleanup();
     navigate('/chat', { state: { message: 'Call ended' } });
   };
@@ -363,6 +420,68 @@ const Call = () => {
     return <Navigate to="/profile" />;
   }
 
+  if (isMinimized) {
+    const peerName = Object.values(participants).find(p => p.uid !== userdata.uid)?.username || 'User';
+    return (
+      <div className="relative w-full h-screen overflow-hidden">
+        {/* Render hidden video tiles to keep streams flowing */}
+        <div style={{ display: 'none' }}>
+          <VideoTile stream={localStream} label="You" muted={true} />
+          {sortedRemoteIds.map((peerId) => (
+             <VideoTile key={peerId} stream={remoteStreams[peerId]} label={participants[peerId]?.username || 'Guest'} />
+          ))}
+        </div>
+
+        <div className="absolute inset-0 z-0">
+          <Chat />
+        </div>
+        {callType === 'audio' ? (
+          <div className="absolute top-0 left-0 w-full z-[100] h-1" />
+        ) : (
+          <div 
+            className="absolute bottom-6 right-6 z-50 w-64 md:w-80 aspect-[4/3] bg-slate-900 rounded-2xl shadow-2xl border-2 border-slate-700 overflow-hidden cursor-pointer hover:border-slate-500 transition-colors group"
+            onClick={() => setIsMinimized(false)}
+          >
+            {/* The actual streams are silently rendered above to prevent teardown,  
+                so we can just mirror the visually needed one here to interact with. */}
+            {sortedRemoteIds.length > 0 ? (
+              <VideoTile stream={remoteStreams[sortedRemoteIds[0]]} label={peerName} />
+            ) : (
+              <VideoTile stream={localStream} label="You" muted={true} />
+            )}
+            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${isMuted ? 'bg-red-500 text-white' : 'bg-slate-700/80 text-white backdrop-blur-sm hover:bg-slate-600'}`}>
+                {isMuted ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                )}
+              </button>
+              {callType === 'video' && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toggleCamera(); }}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center ${isCameraOff ? 'bg-red-500 text-white' : 'bg-slate-700/80 text-white backdrop-blur-sm hover:bg-slate-600'}`}>
+                  {isCameraOff ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 3l18 18"></path></svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                  )}
+                </button>
+              )}
+              <button 
+                onClick={(e) => { e.stopPropagation(); handleLeave(); }}
+                className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-transform">
+                <svg className="w-4 h-4 transform rotate-135" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-screen w-full overflow-hidden px-4 py-6 md:px-8 md:py-8 flex items-center justify-center bg-[radial-gradient(circle_at_top,_#eef2ff,_#f8fafc_35%,_#f1f5f9_70%,_#e2e8f0_100%)]">
       <div className="pointer-events-none absolute -top-32 -left-24 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,_rgba(37,99,235,0.35),_rgba(59,130,246,0.05))] blur-3xl"></div>
@@ -386,7 +505,7 @@ const Call = () => {
                 </div>
               </div>
               <button 
-                onClick={handleLeave}
+                onClick={() => setIsMinimized(true)}
                 className="bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 px-5 rounded-2xl transition-all duration-300 border border-white/10 shadow-sm flex items-center gap-2 hover:scale-105">
                 Return to Chat
               </button>
