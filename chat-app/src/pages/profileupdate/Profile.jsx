@@ -73,9 +73,9 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-0 md:p-6 lg:p-12 relative overflow-hidden">
       
-      <div className="w-full max-w-[900px] min-h-[600px] bg-white rounded-2xl shadow-sm flex flex-col md:flex-row overflow-hidden border border-slate-200">
+      <div className="w-full h-[100dvh] md:h-auto max-w-[900px] md:min-h-[600px] bg-white md:rounded-2xl shadow-sm flex flex-col md:flex-row overflow-hidden md:border border-slate-200 overflow-y-auto">
         
         {/* Left Side: Avatar & Bio */}
         <div className="w-full md:w-[350px] bg-slate-50/50 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col items-center py-12 px-8">
@@ -142,7 +142,7 @@ const Profile = () => {
               ></textarea>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                <div className="p-4 bg-white rounded-xl border border-slate-200 flex items-center gap-3 hover:bg-slate-50 transition-colors cursor-pointer shadow-sm">
                   <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>

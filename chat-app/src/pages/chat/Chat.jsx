@@ -53,14 +53,14 @@ const Chat = () => {
       )}
 
       {/* Main Container */}
-      <div className="relative w-full h-[calc(100vh-3rem)] max-w-[1360px] max-h-[960px] rounded-[36px] bg-white/70 border border-white/70 shadow-[0_40px_120px_rgba(15,23,42,0.12)] backdrop-blur-2xl p-2 md:p-3">
-        <div className="w-full h-full rounded-[30px] bg-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] flex overflow-hidden gap-4 md:gap-5">
+      <div className="relative w-full h-[100dvh] md:h-[calc(100vh-3rem)] max-w-[1360px] md:max-h-[960px] md:rounded-[36px] bg-white/70 md:border md:border-white/70 shadow-[0_40px_120px_rgba(15,23,42,0.12)] backdrop-blur-2xl p-0 md:p-3">
+        <div className="w-full h-full md:rounded-[30px] bg-white md:bg-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] flex overflow-hidden gap-0 md:gap-5">
           {/* Navigation Rail & Sidebar Column */}
           <div className={`
             flex-shrink-0 lg:flex h-full
             ${mobileView === 'sidebar' ? 'w-full flex' : 'hidden'} md:flex
             md:w-[320px] lg:w-[440px] xl:w-[480px]
-            rounded-[28px] overflow-hidden bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)] border border-white/80
+            md:rounded-[28px] overflow-hidden bg-white md:shadow-[0_20px_60px_rgba(15,23,42,0.08)] md:border md:border-white/80
           `}>
             <Sidebar setMobileView={setMobileView} />
           </div>
@@ -69,7 +69,7 @@ const Chat = () => {
           <div className={`
             flex-1 h-full min-w-0 flex flex-col
             ${mobileView === 'chat' ? 'flex' : 'hidden'} md:flex
-            bg-white rounded-[28px] overflow-hidden shadow-[0_20px_60px_rgba(15,23,42,0.08)] border border-slate-100/80 relative
+            bg-white md:rounded-[28px] overflow-hidden md:shadow-[0_20px_60px_rgba(15,23,42,0.08)] md:border md:border-slate-100/80 relative
           `}>
             <Chatbox setMobileView={setMobileView} />
           </div>

@@ -75,8 +75,8 @@ const Sidebar = ({ setMobileView }) => {
     console.log(userChats);
 
   return (
-    <div className="flex bg-white w-full h-full relative overflow-hidden">
-      <div className="hidden lg:flex w-[220px] bg-slate-50 flex-col p-6 flex-shrink-0 border-r border-slate-200">
+    <div className="flex flex-col lg:flex-row bg-white w-full h-full relative overflow-hidden">
+      <div className="hidden lg:flex w-[220px] bg-slate-50 flex-col p-6 flex-shrink-0 border-r border-slate-200 relative z-10">
         <div className="mb-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center">
@@ -165,6 +165,30 @@ const Sidebar = ({ setMobileView }) => {
             </div>
           )}
         </div>
+        {/* Spacer for mobile bottom nav */}
+        <div className="h-[64px] lg:hidden w-full flex-shrink-0"></div>
+      </div>
+
+      {/* Mobile Bottom Nav */}
+      <div className="lg:hidden absolute bottom-0 left-0 right-0 h-[64px] bg-white border-t border-slate-200 flex items-center justify-around px-4 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+        {navItems.map((item) => (
+          <button 
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={`flex flex-col items-center justify-center w-16 h-full gap-1 transition-all ${activeTab === item.id ? "text-blue-600" : "text-slate-400 hover:text-slate-600"}`}
+          >
+            <svg className={`w-6 h-6 ${activeTab === item.id ? "scale-110" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={activeTab === item.id ? "2.5" : "2"} d={item.icon}></path>
+            </svg>
+            <span className="text-[10px] font-bold">{item.label}</span>
+          </button>
+        ))}
+        <button onClick={handleLogout} className="flex flex-col items-center justify-center w-16 h-full gap-1 text-slate-400 hover:text-red-500 transition-colors">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+          </svg>
+          <span className="text-[10px] font-bold">Logout</span>
+        </button>
       </div>
 
       <ContactsList

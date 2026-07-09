@@ -85,6 +85,10 @@ const Call = () => {
 
     const initMedia = async () => {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Media devices not accessible. Ensure you are on HTTPS or localhost.');
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: callType === 'video',
           audio: { 
@@ -107,6 +111,9 @@ const Call = () => {
       } catch (error) {
         console.error('Failed to access media devices:', error);
         setStatus('Camera/microphone access denied');
+        import('react-toastify').then(({ toast }) => {
+          toast.error(error.message || 'Camera/microphone access denied');
+        });
       }
     };
 
@@ -151,10 +158,9 @@ const Call = () => {
         const existingStream = prev[peerId];
         if (existingStream) {
           existingStream.addTrack(event.track);
-          // Return a new object reference so React re-renders, but keep the same MediaStream reference
-          return { ...prev };
+          return { ...prev, [peerId]: new MediaStream(existingStream.getTracks()) };
         }
-        const newStream = event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]);
+        const newStream = event.streams && event.streams[0] ? new MediaStream(event.streams[0].getTracks()) : new MediaStream([event.track]);
         return { ...prev, [peerId]: newStream };
       });
     };
@@ -400,17 +406,17 @@ const Call = () => {
   }
 
   return (
-    <div className="relative h-screen w-full overflow-hidden px-4 py-6 md:px-8 md:py-8 flex items-center justify-center bg-[radial-gradient(circle_at_top,_#eef2ff,_#f8fafc_35%,_#f1f5f9_70%,_#e2e8f0_100%)]">
-      <div className="pointer-events-none absolute -top-32 -left-24 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,_rgba(37,99,235,0.35),_rgba(59,130,246,0.05))] blur-3xl"></div>
-      <div className="pointer-events-none absolute top-24 -right-24 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,_rgba(16,185,129,0.25),_rgba(148,163,184,0.05))] blur-3xl"></div>
+    <div className="relative h-[100dvh] w-full overflow-hidden flex items-center justify-center bg-slate-900 md:bg-[radial-gradient(circle_at_top,_#eef2ff,_#f8fafc_35%,_#f1f5f9_70%,_#e2e8f0_100%)] p-0 md:px-8 md:py-8">
+      <div className="hidden md:block pointer-events-none absolute -top-32 -left-24 h-[360px] w-[360px] rounded-full bg-[radial-gradient(circle,_rgba(37,99,235,0.35),_rgba(59,130,246,0.05))] blur-3xl"></div>
+      <div className="hidden md:block pointer-events-none absolute top-24 -right-24 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,_rgba(16,185,129,0.25),_rgba(148,163,184,0.05))] blur-3xl"></div>
       
-      <div className="relative w-full h-[calc(100vh-3rem)] max-w-[1360px] max-h-[960px] rounded-[36px] bg-white/70 border border-white/70 shadow-[0_40px_120px_rgba(15,23,42,0.12)] backdrop-blur-2xl p-2 md:p-3">
-        <div className="w-full h-full rounded-[30px] bg-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] flex overflow-hidden gap-4 md:gap-5">
+      <div className="relative w-full h-[100dvh] md:h-[calc(100vh-3rem)] max-w-[1360px] md:max-h-[960px] md:rounded-[36px] bg-slate-900 md:bg-white/70 border-0 md:border md:border-white/70 md:shadow-[0_40px_120px_rgba(15,23,42,0.12)] md:backdrop-blur-2xl p-0 md:p-3">
+        <div className="w-full h-full md:rounded-[30px] bg-slate-900 md:bg-white/85 shadow-none md:shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] flex overflow-hidden gap-0 md:gap-5">
           <div className="hidden lg:flex flex-shrink-0 h-full md:w-[320px] lg:w-[440px] xl:w-[480px] rounded-[28px] overflow-hidden bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)] border border-white/80">
             <Sidebar />
           </div>
           
-          <div className="flex-1 h-full min-w-0 flex flex-col bg-slate-900 rounded-[28px] overflow-hidden shadow-[0_20px_60px_rgba(15,23,42,0.08)] relative z-20">
+          <div className="flex-1 h-full min-w-0 flex flex-col bg-slate-900 md:rounded-[28px] overflow-hidden md:shadow-[0_20px_60px_rgba(15,23,42,0.08)] relative z-20">
             <div className="flex items-center justify-between py-5 px-6 border-b border-white/5 bg-black/20 backdrop-blur-md">
               <div className="flex items-center gap-4">
                 <button onClick={handleLeave} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:bg-white/10 hover:text-white transition-colors">

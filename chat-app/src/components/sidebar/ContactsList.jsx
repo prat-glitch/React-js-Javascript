@@ -38,8 +38,8 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
   };
   if (activeTab === "settings") {
     return (
-      <div className="absolute top-0 left-24 lg:left-[280px] right-[-100vw] bottom-0 z-50 bg-white text-slate-800 overflow-y-auto flex pl-0 w-[100vw] lg:w-[calc(100vw-280px)] lg:right-auto max-w-[1400px]">
-        <div className="w-full flex flex-col p-8 lg:p-14 max-w-6xl">
+      <div className="absolute top-0 left-0 lg:left-[220px] right-0 lg:right-auto bottom-0 z-50 bg-white text-slate-800 overflow-y-auto flex w-full lg:w-[calc(100%-220px)] pb-[64px] lg:pb-0">
+        <div className="w-full flex flex-col p-6 md:p-8 lg:p-14 max-w-6xl">
           <div className="flex items-center gap-8 mb-16">
             <div className="relative">
               <div className={`w-24 h-24 rounded-full border-4 border-slate-50 shadow-sm overflow-hidden ${uploading ? 'opacity-50' : ''}`}>
@@ -112,8 +112,8 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
 
   if (activeTab === "contacts") {
     return (
-      <div className="absolute top-0 left-24 lg:left-[280px] right-[-100vw] bottom-0 z-50 bg-white text-slate-800 overflow-y-auto flex pl-0 w-[100vw] lg:w-[calc(100vw-280px)] lg:right-auto max-w-[1400px]">
-        <div className="w-full flex flex-col p-8 lg:p-14 max-w-6xl">
+      <div className="absolute top-0 left-0 lg:left-[220px] right-0 lg:right-auto bottom-0 z-50 bg-white text-slate-800 overflow-y-auto flex w-full lg:w-[calc(100%-220px)] pb-[64px] lg:pb-0">
+        <div className="w-full flex flex-col p-6 md:p-8 lg:p-14 max-w-6xl">
           <div className="flex flex-col lg:flex-row justify-between lg:items-end mb-12 gap-6">
             <div>
               <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-1">Directory</h1>

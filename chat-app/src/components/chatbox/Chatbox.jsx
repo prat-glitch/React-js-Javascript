@@ -440,7 +440,7 @@ const Chatbox = ({ setMobileView }) => {
       </div>
 
       {/* ── INPUT AREA ── */}
-      <div className="px-6 py-4 bg-white border-t border-slate-200 relative z-20">
+      <div className="px-4 md:px-6 py-3 md:py-4 bg-white border-t border-slate-200 relative z-20">
         <div className="h-12 bg-slate-50 rounded-xl flex items-center px-2 gap-2 border border-slate-200 focus-within:bg-white focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100 transition-all duration-300">
           
           <input

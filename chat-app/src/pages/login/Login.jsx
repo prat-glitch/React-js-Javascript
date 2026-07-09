@@ -41,8 +41,8 @@ const Login = () => {
   }
 
   return (
-    <div className='min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden'>
-      <Card className="w-full max-w-md relative z-10 shadow-sm border border-slate-200 bg-white rounded-2xl overflow-hidden">
+    <div className='min-h-screen bg-white sm:bg-slate-50 flex items-center justify-center p-0 sm:p-6 relative overflow-hidden'>
+      <Card className="w-full h-[100dvh] sm:h-auto max-w-md relative z-10 shadow-none sm:shadow-sm border-0 sm:border border-slate-200 bg-white rounded-none sm:rounded-2xl overflow-hidden flex flex-col justify-center">
         
         {/* Added px-8 pt-8 here to push the title away from the edges */}
         <CardHeader className="px-8 pt-8 pb-6 space-y-2 text-center flex flex-col items-center">
