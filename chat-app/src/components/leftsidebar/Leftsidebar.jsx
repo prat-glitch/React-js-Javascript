@@ -3,14 +3,12 @@ import assets from '../../assets/assets'
 import { Appcontext } from '../../context/Appcontext'
 import { logout } from '../../config/firebase'
 import { useNavigate } from 'react-router-dom'
-import { useSocket } from '../../context/SocketContext'
 
 const Leftsidebar = ({ setMobileView }) => {
   const navigate = useNavigate()
   const { userdata, allUsers, userChats, selectedChatUser, setSelectedChatUser, unreadChats, markChatAsRead } = useContext(Appcontext)
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const { isUserOnline } = useSocket()
   const [activeTab, setActiveTab] = useState('messages') // 'messages' | 'contacts' | 'settings'
 
   const handleSelectUser = (user) => {
@@ -41,9 +39,9 @@ const Leftsidebar = ({ setMobileView }) => {
 
   const recentChatUsers = userChats
     .map(chat => ({
-      ...allUsers.find(u => u.uid === chat.recipientId),
-      lastMsg: chat.lastMsg,
-      updatedAt: chat.updatedAt,
+      ...allUsers.find(u => u.uid === chat.recipient_id),
+      lastMsg: chat.last_message,
+      updatedAt: new Date(chat.updated_at).getTime(),
       unread: chat.unread || 0
     }))
     .filter(u => u && u.uid)
@@ -88,7 +86,7 @@ const Leftsidebar = ({ setMobileView }) => {
           </button>
           <button onClick={handleLogout} className="flex items-center gap-4 px-4 py-3 rounded-2xl text-slate-500 hover:bg-red-50 hover:text-red-500 transition-all group">
             <svg className="w-6 h-6 flex-shrink-0 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3h4a3 3 0 013 3v1"></path>
             </svg>
             <span className="hidden lg:block font-bold text-sm">Logout</span>
           </button>
@@ -139,7 +137,7 @@ const Leftsidebar = ({ setMobileView }) => {
              <div className="flex flex-col gap-1">
                {filteredUsers.length > 0 ? (
                  filteredUsers.map((user) => (
-                   <UserCard key={user.uid} user={user} isSelected={selectedChatUser?.uid === user.uid} onClick={() => handleSelectUser(user)} isOnline={isUserOnline(user.uid)} />
+                   <UserCard key={user.uid} user={user} isSelected={selectedChatUser?.uid === user.uid} onClick={() => handleSelectUser(user)} isOnline={user.online} />
                  ))
                ) : (
                  <p className="p-8 text-center text-slate-400 text-sm">No users found</p>
@@ -156,7 +154,7 @@ const Leftsidebar = ({ setMobileView }) => {
                    lastMsg={user.lastMsg}
                    isSelected={selectedChatUser?.uid === user.uid} 
                    onClick={() => handleSelectUser(user)} 
-                   isOnline={isUserOnline(user.uid)}
+                   isOnline={user.online}
                    unread={unreadChats[user.uid]}
                  />
                ))}

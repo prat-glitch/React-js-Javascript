@@ -15,27 +15,6 @@ const App = () => {
   const location = useLocation();
   const { loaduserdata } = useContext(Appcontext);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        console.log("✅ Firebase user logged in:", user);
-        await loaduserdata(user.uid);
-
-        // Allow navigation cleanly without strictly overriding profile edits midway
-        if (location.pathname === "/") {
-          navigate("/chat");
-        }
-      } else {
-        // ✅ If not logged in, stay on login page or redirect to login
-        if (location.pathname !== "/") {
-          navigate("/");
-        }
-      }
-    }); 
-
-    return () => unsubscribe();
-  }, []);
-
   return (
     <>
       <ToastContainer />

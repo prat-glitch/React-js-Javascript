@@ -1,15 +1,6 @@
-// src/context/Appcontext.jsx
-import { createContext, useEffect, useMemo, useState } from "react";
-import { auth, db } from "../config/firebase";
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  collection,
-  onSnapshot,
-  serverTimestamp
-} from "firebase/firestore";
-import { onDisconnect } from "firebase/database";
+import { createContext, useEffect, useMemo, useState, useRef } from "react";
+import { auth } from "../config/firebase";
+import { setSupabaseToken, getSupabase } from "../config/supabase";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export const Appcontext = createContext();
@@ -28,143 +19,221 @@ const Appcontextprovider = (props) => {
   const [userChats, setUserChats] = useState([]); // recent chats list
   const [allUsers, setAllUsers] = useState([]);
   const [selectedChatUser, setSelectedChatUser] = useState(null);
-  const [lastSeenIntervalId, setLastSeenIntervalId] = useState(null);
   const [unreadChats, setUnreadChats] = useState({}); // {recipientId: count}
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
 
-  // ---------- Auth state ----------
+  const presenceChannelRef = useRef(null);
+
+  // ---------- Auth state & Token Exchange ----------
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        await loaduserdata(firebaseUser.uid);
+        
+        try {
+          // Exchange Firebase token for Supabase JWT
+          const firebasetoken = await firebaseUser.getIdToken();
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ firebasetoken })
+          });
+          
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Failed to fetch Supabase token: ${response.status} - ${errText}`);
+          }
+          const { supabasetoken } = await response.json();
+          
+          // Set it globally
+          setSupabaseToken(supabasetoken);
 
-        // Route guard after profile load
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
-        const data = userSnap.data();
-        const profileCompleted = data?.avatar && data?.username;
-
-        if (profileCompleted && location.pathname !== "/chat") {
-          navigate("/chat");
-        } else if (!profileCompleted && location.pathname !== "/profile") {
-          navigate("/profile");
+          await loaduserdata(firebaseUser.uid);
+          setupPresence(firebaseUser.uid);
+        } catch (err) {
+          console.error("Token exchange failed:", err);
         }
+
       } else {
         setUser(null);
         setuserdata(null);
         setSelectedChatUser(null);
+        if (presenceChannelRef.current) {
+          presenceChannelRef.current.unsubscribe();
+        }
         if (location.pathname !== "/") navigate("/");
       }
     });
 
     return () => {
-      if (lastSeenIntervalId) clearInterval(lastSeenIntervalId);
       unsubscribe();
+      if (presenceChannelRef.current) presenceChannelRef.current.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------- Presence + profile load ----------
+  // ---------- Load profile ----------
   const loaduserdata = async (uid) => {
     try {
-      const userRef = doc(db, "users", uid);
-      const userSnap = await getDoc(userRef);
+      const { data, error } = await getSupabase().from('users').select('*').eq('uid', uid).maybeSingle();
 
-      if (userSnap.exists()) {
-        const data = userSnap.data();
-        setuserdata({ uid, ...data });
+      if (error) throw error;
+      
+      let finalData = data;
 
-        // mark online, update lastseen
-        await updateDoc(userRef, {
-          online: true,
-          lastseen: new Date().toLocaleString(),
-        });
-
-        // on page close: set offline
-        const onClose = async () => {
-          try {
-            await updateDoc(userRef, {
-              online: false,
-              lastseen: new Date().toLocaleString(),
-            });
-          } catch {}
-        };
-        window.addEventListener("beforeunload", onClose);
-
-        // heartbeat: refresh lastseen every minute
-        if (!lastSeenIntervalId) {
-          const id = setInterval(async () => {
-            const currentUser = auth.currentUser;
-            if (currentUser) {
-              await updateDoc(doc(db, "users", currentUser.uid), {
-                lastseen: serverTimestamp(),
-              });
-            }
-          }, 60000);
-          setLastSeenIntervalId(id);
+      if (!finalData) {
+        // Fallback: If user exists in Firebase but not Supabase, create their profile now!
+        const fbUser = auth.currentUser;
+        if (fbUser) {
+          const newProfile = {
+            uid: fbUser.uid,
+            username: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+            email: fbUser.email,
+            avatar: "",
+            bio: "Hey there! I am using Chat App",
+            online: true,
+            lastseen: new Date().toLocaleString(),
+          };
+          const { data: insertedData, error: insertErr } = await getSupabase().from('users').insert(newProfile).select().single();
+          if (insertErr) {
+            console.error("Failed to auto-create missing Supabase profile:", insertErr);
+          } else {
+            finalData = insertedData;
+          }
         }
+      }
+
+      if (finalData) {
+        setuserdata(finalData);
+        
+        // Route guard after profile load
+        const profileCompleted = finalData.profile_completed;
+        const currentPath = window.location.pathname;
+
+        if (profileCompleted && currentPath !== "/chat") {
+          navigate("/chat");
+        } else if (!profileCompleted && currentPath !== "/profile") {
+          navigate("/profile");
+        }
+
+        // Update lastseen heartbeat
+        await getSupabase().from('users').update({
+            lastseen: new Date().toLocaleString()
+        }).eq('uid', uid);
       }
     } catch (err) {
       console.error("Error loading user data:", err);
     }
   };
 
+  // ---------- Supabase Realtime Presence ----------
+  const setupPresence = (uid) => {
+    if (presenceChannelRef.current) {
+      presenceChannelRef.current.unsubscribe();
+    }
+
+    const channel = getSupabase().channel('online-users', {
+      config: { presence: { key: uid } }
+    });
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const onlineIds = new Set(Object.keys(state));
+        setOnlineUsers(onlineIds);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ online_at: new Date().toISOString() });
+        }
+      });
+
+    presenceChannelRef.current = channel;
+  };
+
   // ---------- Realtime: all users ----------
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "users"), (snap) => {
-      const users = snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
-      setAllUsers(users);
-    });
-    return () => unsub();
-  }, []);
+    if (!userdata?.uid) return;
 
-  // Keep selectedChatUser in sync with latest data (for lastseen updates)
+    const fetchUsers = async () => {
+      const { data } = await getSupabase().from('users').select('*');
+      if (data) setAllUsers(data);
+    };
+    fetchUsers();
+
+    const channel = getSupabase()
+      .channel('users_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
+        fetchUsers();
+      })
+      .subscribe();
+
+    return () => channel.unsubscribe();
+  }, [userdata?.uid]);
+
+  // Keep selectedChatUser in sync with latest data + presence
   useEffect(() => {
     if (selectedChatUser && allUsers.length > 0) {
       const updatedUser = allUsers.find(u => u.uid === selectedChatUser.uid);
-      if (updatedUser && updatedUser.lastseen !== selectedChatUser.lastseen) {
+      if (updatedUser) {
+        // Merge presence state
+        updatedUser.online = onlineUsers.has(updatedUser.uid);
         setSelectedChatUser(updatedUser);
       }
     }
-  }, [allUsers]);
+  }, [allUsers, onlineUsers]);
 
-  // ---------- Realtime: my chat list (userChats/{uid}) ----------
+  // ---------- Realtime: my chat list ----------
   useEffect(() => {
     if (!userdata?.uid) return;
-    const unsub = onSnapshot(doc(db, "userChats", userdata.uid), (snap) => {
-      console.log("userChats updated:", snap.data());
-      const list = snap.data()?.chatdata || [];
-      // sort desc by updatedAt numeric
-      list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-      setUserChats([...list]);
-      
-      // Update unread counts (mark as unread if not currently viewing that chat)
-      const newUnread = {};
-      list.forEach(chat => {
-        if (chat.unread && chat.recipientId !== selectedChatUser?.uid) {
-          newUnread[chat.recipientId] = chat.unread;
-        }
-      });
-      setUnreadChats(newUnread);
-    }, (err) => {
-      console.error("userChats listener error:", err);
-    });
-    return () => unsub();
+
+    const fetchChats = async () => {
+      const { data } = await getSupabase()
+        .from('user_chats')
+        .select('*')
+        .eq('owner_id', userdata.uid)
+        .order('updated_at', { ascending: false });
+        
+      if (data) {
+        setUserChats(data);
+        
+        const newUnread = {};
+        data.forEach(chat => {
+          if (chat.unread > 0 && chat.recipient_id !== selectedChatUser?.uid) {
+            newUnread[chat.recipient_id] = chat.unread;
+          }
+        });
+        setUnreadChats(newUnread);
+      }
+    };
+
+    fetchChats();
+
+    const channel = getSupabase()
+      .channel('user_chats_changes')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'user_chats', 
+        filter: `owner_id=eq.${userdata.uid}` 
+      }, () => {
+        fetchChats();
+      })
+      .subscribe();
+
+    return () => channel.unsubscribe();
   }, [userdata?.uid, selectedChatUser?.uid]);
 
   // Clear unread when selecting a chat
   const markChatAsRead = async (recipientId) => {
     if (!userdata?.uid || !recipientId) return;
     try {
-      const userChatsRef = doc(db, "userChats", userdata.uid);
-      const snap = await getDoc(userChatsRef);
-      if (snap.exists()) {
-        const chatdata = snap.data().chatdata || [];
-        const updated = chatdata.map(c => 
-          c.recipientId === recipientId ? { ...c, unread: 0 } : c
-        );
-        await updateDoc(userChatsRef, { chatdata: updated });
-      }
+      await getSupabase()
+        .from('user_chats')
+        .update({ unread: 0 })
+        .eq('owner_id', userdata.uid)
+        .eq('recipient_id', recipientId);
+        
       setUnreadChats(prev => {
         const copy = { ...prev };
         delete copy[recipientId];
@@ -175,10 +244,18 @@ const Appcontextprovider = (props) => {
     }
   };
 
+  // Helper to get user info for lists
+  const enrichedAllUsers = useMemo(() => {
+    return allUsers.map(u => ({
+      ...u,
+      online: onlineUsers.has(u.uid)
+    }));
+  }, [allUsers, onlineUsers]);
+
   const value = useMemo(() => ({
     user,
     userdata,
-    allUsers,
+    allUsers: enrichedAllUsers,
     userChats,
     selectedChatUser,
     setSelectedChatUser,
@@ -186,7 +263,7 @@ const Appcontextprovider = (props) => {
     loaduserdata,
     unreadChats,
     markChatAsRead,
-  }), [user, userdata, allUsers, userChats, selectedChatUser, unreadChats]);
+  }), [user, userdata, enrichedAllUsers, userChats, selectedChatUser, unreadChats]);
 
   return (
     <Appcontext.Provider value={value}>

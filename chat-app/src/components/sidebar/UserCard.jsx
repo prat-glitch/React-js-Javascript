@@ -4,8 +4,8 @@ import assets from "../../assets/assets"
 const UserCard = ({ user, lastMsg, isSelected, onClick, isOnline, unread }) => (
   <div 
     className={`
-      flex items-center gap-5 py-4 px-5 mx-2 cursor-pointer rounded-[24px] transition-all duration-200 group
-      ${isSelected ? "bg-blue-50 text-blue-600" : "hover:bg-[#f8f9fc]"}
+      flex items-center gap-4 py-3 px-4 mx-2 cursor-pointer rounded-xl transition-all duration-200 group
+      ${isSelected ? "bg-blue-50 text-blue-600" : "hover:bg-slate-50"}
     `}
     onClick={onClick}
   >
@@ -18,7 +18,7 @@ const UserCard = ({ user, lastMsg, isSelected, onClick, isOnline, unread }) => (
 
       {/* Row 1 — name + timestamp */}
       <div className="flex items-center justify-between mb-1">
-        <h4 className={`text-base font-bold truncate ${isSelected ? "text-blue-900" : "text-slate-800"}`}>
+        <h4 className={`text-sm font-semibold truncate ${isSelected ? "text-blue-900" : "text-slate-800"}`}>
           {user.username}
         </h4>
         <span className="text-[11px] text-slate-400 ml-1 flex-shrink-0">
@@ -28,7 +28,7 @@ const UserCard = ({ user, lastMsg, isSelected, onClick, isOnline, unread }) => (
 
       {/* Row 2 — last message + unread badge */}
       <div className="flex items-center justify-between">
-        <p className={`text-sm truncate flex-1 ${isSelected ? "text-blue-600 font-medium" : unread > 0 ? "text-slate-800 font-semibold" : "text-slate-500 font-medium"}`}>
+        <p className={`text-xs truncate flex-1 ${isSelected ? "text-blue-600 font-medium" : unread > 0 ? "text-slate-800 font-medium" : "text-slate-500"}`}>
           {lastMsg || (isOnline ? "Active now" : "New connection")}
         </p>
         {unread > 0 && (

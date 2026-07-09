@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
 import assets from '../../assets/assets' 
-import { signup, Login as loginUser } from '../../config/firebase'
+import { signup, Login as loginUser, auth } from '../../config/firebase'
 import { useNavigate } from 'react-router-dom'
+import { Appcontext } from '../../context/Appcontext'
 
 // shadcn ui imports
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ import { Label } from "@/components/ui/label"
 
 const Login = () => {
   const navigate = useNavigate();
+  const { loaduserdata } = useContext(Appcontext);
   const [currstate, setcurrstate] = useState('Sign Up');
   const [username, setusername] = useState('');
   const [email, setemail] = useState('');
@@ -29,15 +31,9 @@ const Login = () => {
     setLoading(true);
     try {
       if (currstate === "Sign Up") {
-        const success = await signup(username, email, password);
-        if (success) {
-          navigate('/profile');
-        }
+        await signup(username, email, password);
       } else {
-        const user = await loginUser(email, password);
-        if (user) {
-          // Navigated by Firebase Auth state listener in App.jsx
-        }
+        await loginUser(email, password);
       }
     } finally {
       setLoading(false);
@@ -45,70 +41,67 @@ const Login = () => {
   }
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-blue-600 via-indigo-600 to-slate-900 flex items-center justify-center p-6 relative overflow-hidden'>
-      {/* Decorative Blobs */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-400/25 rounded-full blur-[150px] -translate-y-1/2 translate-x-1/2"></div>
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-500/25 rounded-full blur-[150px] translate-y-1/2 -translate-x-1/2"></div>
-
-      {/* Removed the p-6 from here so it doesn't conflict */}
-      <Card className="w-full max-w-lg relative z-10 shadow-3xl bg-white rounded-3xl overflow-hidden">
+    <div className='min-h-screen bg-slate-50 flex items-center justify-center p-6 relative overflow-hidden'>
+      <Card className="w-full max-w-md relative z-10 shadow-sm border border-slate-200 bg-white rounded-2xl overflow-hidden">
         
         {/* Added px-8 pt-8 here to push the title away from the edges */}
-        <CardHeader className="px-10 pt-10 pb-6 space-y-2 text-center flex flex-col items-center">
-          <div className="w-14 h-14 bg-blue-600 rounded-3xl flex items-center justify-center mb-2 shadow-xl">
-            <img src={assets.logo_icon} alt='logo' className='w-8 h-8 brightness-[10]' />
+        <CardHeader className="px-8 pt-8 pb-6 space-y-2 text-center flex flex-col items-center">
+          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-2">
+            <img src={assets.logo_icon} alt='logo' className='w-6 h-6 brightness-[10]' />
           </div>
-          <CardTitle className="text-3xl font-bold">
-            {currstate === "Sign Up" ? "Create an account" : "Login to your account"}
+          <CardTitle className="text-2xl font-semibold text-slate-800 tracking-tight">
+            {currstate === "Sign Up" ? "Create an account" : "Welcome back"}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-slate-500">
             {currstate === "Sign Up" 
               ? "Enter your details below to sign up" 
               : "Enter your email below to login to your account"}
           </CardDescription>
         </CardHeader>
         
-        {/* Added px-10 pb-8 here to pad the sides of the form */}
-        <CardContent className="px-10 pb-8">
+        {/* Added px-8 pb-8 here to pad the sides of the form */}
+        <CardContent className="px-8 pb-6">
           <form onSubmit={onsubmithandler}>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5">
               
               {/* Removed mx-4 from the inputs so they align perfectly! */}
               {currstate === "Sign Up" && (
-                <div className="grid gap-3">
-                  <Label htmlFor="username">Full Name</Label>
+                <div className="grid gap-2">
+                  <Label htmlFor="username" className="text-slate-600">Full Name</Label>
                   <Input
                     id="username"
                     type="text"
                     value={username}
                     onChange={(e) => setusername(e.target.value)}
                     placeholder="John Doe"
+                    className="h-11 rounded-lg border-slate-200 focus-visible:ring-blue-500 bg-slate-50/50"
                     required
                   />
                 </div>
               )}
 
-              <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
+              <div className="grid gap-2">
+                <Label htmlFor="email" className="text-slate-600">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setemail(e.target.value)}
                   placeholder="m@example.com"
+                  className="h-11 rounded-lg border-slate-200 focus-visible:ring-blue-500 bg-slate-50/50"
                   required
                 />
               </div>
 
-              <div className="grid gap-3">
+              <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-slate-600">Password</Label>
                   {currstate === "Login" && (
                     <a
                       href="#"
-                      className="ml-auto inline-block text-sm underline-offset-4 hover:underline text-slate-500"
+                      className="ml-auto inline-block text-xs font-medium hover:text-blue-600 text-slate-500 transition-colors"
                     >
-                      Forgot your password?
+                      Forgot password?
                     </a>
                   )}
                 </div>
@@ -117,33 +110,34 @@ const Login = () => {
                   type="password" 
                   value={password}
                   onChange={(e) => setpassword(e.target.value)}
+                  className="h-11 rounded-lg border-slate-200 focus-visible:ring-blue-500 bg-slate-50/50"
                   required 
                 />
               </div>
 
               {currstate === "Sign Up" && (
-                <div className="flex items-center gap-3 text-sm text-slate-500">
-                  <input type='checkbox' id="terms" className="rounded" required />
-                  <label htmlFor="terms">I agree to the Fluid Terms & Conditions.</label>
+                <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                  <input type='checkbox' id="terms" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" required />
+                  <label htmlFor="terms">I agree to the Terms & Conditions</label>
                 </div>
               )}
 
-              <Button type="submit" className="w-full mt-3 py-6 text-lg font-semibold bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl text-white" disabled={loading}>
+              <Button type="submit" className="w-full mt-2 h-11 text-[15px] font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all" disabled={loading}>
                 {loading ? "Processing..." : (currstate === "Sign Up" ? "Sign Up" : "Login")}
               </Button>
             </div>
           </form>
         </CardContent>
 
-        {/* Added px-10 pb-10 here for the bottom link */}
-        <CardFooter className="px-10 pb-10 flex flex-col gap-3 justify-center">
-          <p className="text-base text-slate-500 text-center">
-            {currstate === "Sign Up" ? "Already part of the flow? " : "New to the exchange? "}
+        {/* Added px-8 pb-8 here for the bottom link */}
+        <CardFooter className="px-8 pb-8 flex flex-col gap-3 justify-center border-t border-slate-100 pt-6">
+          <p className="text-sm text-slate-500 text-center">
+            {currstate === "Sign Up" ? "Already have an account? " : "Don't have an account? "}
             <span 
-              className='text-blue-600 font-medium cursor-pointer hover:underline transition-all' 
+              className='text-blue-600 font-semibold cursor-pointer hover:text-blue-700 transition-all' 
               onClick={() => setcurrstate(currstate === 'Sign Up' ? 'Login' : 'Sign Up')}
             >
-              {currstate === "Sign Up" ? "Login" : "Sign Up"}
+              {currstate === "Sign Up" ? "Login" : "Sign up"}
             </span>
           </p>
         </CardFooter>

@@ -7,13 +7,6 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc
-} from "firebase/firestore";
-import { onDisconnect } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,37 +19,43 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-// Utility: ensure userChats doc exists
-const ensureUserChatsDoc = async (uid) => {
-  const ref = doc(db, "userChats", uid);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, { chatdata: [] });
-  }
-};
 
 export const signup = async (username, email, password) => {
   try {
     const res = await createUserWithEmailAndPassword(auth, email, password);
     const user = res.user;
 
-    await setDoc(doc(db, "users", user.uid), {
-      uid: user.uid,
-      username: username.toLowerCase(),
-      email,
-      avatar: "",
-      bio: "Hey there! I am using Chat App",
-      online: true,
-      lastseen: new Date().toLocaleString(),
+    // Exchange token for Supabase JWT
+    const firebasetoken = await user.getIdToken();
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ firebasetoken })
     });
+    
+    if (response.ok) {
+      const { supabasetoken } = await response.json();
+      const { setSupabaseToken, getSupabase } = await import('./supabase.js');
+      setSupabaseToken(supabasetoken);
 
-    await ensureUserChatsDoc(user.uid);
+      // Write user profile to Supabase
+      await getSupabase().from('users').insert({
+        uid: user.uid,
+        username: username.toLowerCase(),
+        email,
+        avatar: "",
+        bio: "Hey there! I am using Chat App",
+        online: true,
+        lastseen: new Date().toLocaleString(),
+      });
+      // Note: user_chats is inserted dynamically by trigger when messages are sent, 
+      // so we don't need to manually initialize it on signup!
+    }
+
     return true; // Success
   } catch (error) {
     console.error(error);
-    toast.error(error.code.split("/")[1].split("-").join(" "));
+    toast.error(error.code?.split("/")[1]?.split("-").join(" ") || error.message);
     return false;
   }
 };
@@ -64,7 +63,6 @@ export const signup = async (username, email, password) => {
 export const Login = async (email, password) => {
   try {
     const res = await signInWithEmailAndPassword(auth, email, password);
-    await ensureUserChatsDoc(res.user.uid);
     return res.user;
   } catch (error) {
     console.error(error);

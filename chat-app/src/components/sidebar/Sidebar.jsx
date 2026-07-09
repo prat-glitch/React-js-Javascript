@@ -3,7 +3,6 @@ import assets from "../../assets/assets"
 import { Appcontext } from "../../context/Appcontext"
 import { logout } from "../../config/firebase"
 import { useNavigate } from "react-router-dom"
-import { useSocket } from "../../context/SocketContext"
 import NavigationMenu from "./NavigationMenu"
 import ContactsList from "./ContactsList"
 import UserCard from "./UserCard"
@@ -22,7 +21,6 @@ const Sidebar = ({ setMobileView }) => {
 
   const [searchQuery, setSearchQuery] = useState("")
   const [showSearch, setShowSearch] = useState(false)
-  const { isUserOnline } = useSocket()
   const [activeTab, setActiveTab] = useState("messages") // 'messages' | 'contacts' | 'settings'
 
   const handleSelectUser = (user) => {
@@ -65,9 +63,9 @@ const Sidebar = ({ setMobileView }) => {
   const recentChatUsers = useMemo(() =>{
     return userChats
     .map((chat) => ({
-      ...allUsers.find((u) => u.uid === chat.recipientId),
-      lastMsg: chat.lastMsg,
-      updatedAt: chat.updatedAt,
+      ...allUsers.find((u) => u.uid === chat.recipient_id),
+      lastMsg: chat.last_msg,
+      updatedAt: chat.updated_at,
       unread: chat.unread || 0,
     }))
     .filter((u) => u && u.uid)
@@ -77,8 +75,8 @@ const Sidebar = ({ setMobileView }) => {
     console.log(userChats);
 
   return (
-    <div className="flex bg-[#f4f6fb] w-full h-full relative overflow-hidden">
-      <div className="hidden lg:flex w-[220px] bg-[#eef2f7] flex-col p-6 flex-shrink-0 border-r border-slate-200/70">
+    <div className="flex bg-white w-full h-full relative overflow-hidden">
+      <div className="hidden lg:flex w-[220px] bg-slate-50 flex-col p-6 flex-shrink-0 border-r border-slate-200">
         <div className="mb-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center">
@@ -99,11 +97,11 @@ const Sidebar = ({ setMobileView }) => {
         />
       </div>
 
-      <div className="flex-1 flex flex-col bg-[#f1f3f8] overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white overflow-hidden border-r border-slate-100">
         <div className="p-6 pb-4">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-black text-slate-800">Messages</h2>
-            <button className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Messages</h2>
+            <button onClick={() => setActiveTab("contacts")} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path>
               </svg>
@@ -119,7 +117,7 @@ const Sidebar = ({ setMobileView }) => {
             <input
               type="text"
               placeholder="Search conversations..."
-              className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white text-sm font-medium text-slate-700 placeholder:text-slate-400 shadow-sm"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 text-sm font-medium text-slate-700 placeholder:text-slate-400 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -139,7 +137,7 @@ const Sidebar = ({ setMobileView }) => {
                     user={user}
                     isSelected={selectedChatUser?.uid === user.uid}
                     onClick={() => handleSelectUser(user)}
-                    isOnline={isUserOnline(user.uid)}
+                    isOnline={user.online}
                     unread={user.unread}
                   />
                 ))
@@ -156,7 +154,7 @@ const Sidebar = ({ setMobileView }) => {
                   lastMsg={user.lastMsg}
                   isSelected={selectedChatUser?.uid === user.uid}
                   onClick={() => handleSelectUser(user)}
-                  isOnline={isUserOnline(user.uid)}
+                  isOnline={user.online}
                   unread={user.unread}
                 />
               ))}
@@ -174,7 +172,6 @@ const Sidebar = ({ setMobileView }) => {
         allUsers={allUsers}
         userdata={userdata}
         handleSelectUser={handleSelectUser}
-        isUserOnline={isUserOnline}
       />
     </div>
   )

@@ -3,11 +3,9 @@ import assets from '../../assets/assets'
 import { logout } from '../../config/firebase'
 import { Appcontext } from '../../context/Appcontext'
 import { useNavigate } from 'react-router-dom'
-import { useSocket } from '../../context/SocketContext'
 
 const Rightsidebar = () => {
   const { userdata, selectedChatUser } = useContext(Appcontext)
-  const { isUserOnline } = useSocket()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -17,7 +15,7 @@ const Rightsidebar = () => {
 
   // Use selected chat user if available, else show logged in user
   const displayUser = selectedChatUser || userdata
-  const online = displayUser ? isUserOnline(displayUser.uid) : false
+  const online = displayUser ? displayUser.online : false
 
   if (!displayUser) return null
 

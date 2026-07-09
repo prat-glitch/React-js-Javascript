@@ -1,37 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSocket } from '../../context/SocketContext';
+import { Appcontext } from '../../context/Appcontext';
+import { getSupabase } from '../../config/supabase';
 
 const IncomingCallNotification = () => {
-  const { socket, isConnected, rejectCall } = useSocket();
+  const { userdata } = useContext(Appcontext);
   const navigate = useNavigate();
   const [incomingCall, setIncomingCall] = useState(null);
+  const channelRef = useRef(null);
 
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    if (!userdata?.uid) return;
 
-    const handleCallIncoming = (data) => {
-      console.log('Incoming call data:', data);
-      // data: { callerId, callerName, chatId, callType }
-      setIncomingCall(data);
-      
-      // Optional: Play a ringing sound here
-      // const audio = new Audio('/ringtone.mp3');
-      // audio.play();
-    };
+    // Listen on a personal channel for this user
+    const channel = getSupabase().channel(`user:${userdata.uid}`);
 
-    const handleCallRejected = () => {
+    channel.on('broadcast', { event: 'call:incoming' }, (payload) => {
+      console.log('Incoming call data:', payload);
+      setIncomingCall(payload.payload);
+    });
+
+    channel.on('broadcast', { event: 'call:rejected' }, () => {
       setIncomingCall(null);
-    };
+    });
+    
+    channel.on('broadcast', { event: 'call:cancelled' }, () => {
+      setIncomingCall(null);
+    });
 
-    socket.on('call:incoming', handleCallIncoming);
-    socket.on('call:rejected', handleCallRejected);
+    channel.subscribe();
+    channelRef.current = channel;
 
     return () => {
-      socket.off('call:incoming', handleCallIncoming);
-      socket.off('call:rejected', handleCallRejected);
+      channel.unsubscribe();
+      channelRef.current = null;
     };
-  }, [socket, isConnected]);
+  }, [userdata?.uid]);
 
   const handleAccept = () => {
     if (!incomingCall) return;
@@ -41,7 +45,16 @@ const IncomingCallNotification = () => {
 
   const handleReject = () => {
     if (!incomingCall) return;
-    rejectCall(incomingCall.callerId);
+    
+    // Notify the caller that it was rejected
+    if (incomingCall.callerId) {
+      getSupabase().channel(`user:${incomingCall.callerId}`).send({
+        type: 'broadcast',
+        event: 'call:rejected',
+        payload: { calleeId: userdata.uid }
+      });
+    }
+
     setIncomingCall(null);
   };
 
