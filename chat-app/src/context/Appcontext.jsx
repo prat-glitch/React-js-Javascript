@@ -31,22 +31,26 @@ const Appcontextprovider = (props) => {
         setUser(firebaseUser);
         
         try {
-          // Exchange Firebase token for Supabase JWT
-          const firebasetoken = await firebaseUser.getIdToken();
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-token`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ firebasetoken })
-          });
-          
-          if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`Failed to fetch Supabase token: ${response.status} - ${errText}`);
+          // Seed the Realtime WebSocket with an initial token so that
+          // realtime subscriptions work right after sign-in.
+          // The REST client now fetches a fresh token dynamically per-request
+          // via the custom fetch wrapper in supabase.js.
+          const firebasetoken = await firebaseUser.getIdToken(false);
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-token`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ firebasetoken }),
+            }
+          );
+
+          if (response.ok) {
+            const { supabasetoken } = await response.json();
+            // setSupabaseToken is now a lightweight helper that only
+            // seeds the Realtime WebSocket auth token.
+            setSupabaseToken(supabasetoken);
           }
-          const { supabasetoken } = await response.json();
-          
-          // Set it globally
-          setSupabaseToken(supabasetoken);
 
           await loaduserdata(firebaseUser.uid);
           setupPresence(firebaseUser.uid);
@@ -71,6 +75,7 @@ const Appcontextprovider = (props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // ---------- Load profile ----------
   const loaduserdata = async (uid) => {

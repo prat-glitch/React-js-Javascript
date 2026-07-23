@@ -5,7 +5,9 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signOut
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -67,6 +69,78 @@ export const Login = async (email, password) => {
   } catch (error) {
     console.error(error);
     toast.error(error.code.split("/")[1].split("-").join(" "));
+  }
+};
+
+// ── Google OAuth ──────────────────────────────────────────────
+// Signs the user in via Google popup. After this resolves,
+// Firebase's onAuthStateChanged fires → AppContext exchanges the
+// Firebase ID-token for a Supabase JWT automatically.
+// We only need to ensure the Supabase `users` row exists here.
+export const googleSignIn = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    // Force account picker every time so users can switch accounts
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    const result = await signInWithPopup(auth, provider);
+    const firebaseUser = result.user;
+
+    // Exchange Firebase token → Supabase JWT so we can write the profile
+    const firebasetoken = await firebaseUser.getIdToken();
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-token`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firebasetoken }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Token exchange failed: ${response.status}`);
+    }
+
+    const { supabasetoken } = await response.json();
+    const { setSupabaseToken, getSupabase } = await import('./supabase.js');
+    setSupabaseToken(supabasetoken);
+
+    // Upsert the user profile — safe for both new & returning Google users
+    const { error: upsertErr } = await getSupabase()
+      .from('users')
+      .upsert(
+        {
+          uid: firebaseUser.uid,
+          username:
+            firebaseUser.displayName ||
+            firebaseUser.email?.split('@')[0] ||
+            'User',
+          email: firebaseUser.email,
+          avatar: firebaseUser.photoURL || '',
+          bio: 'Hey there! I am using Chat App',
+          online: true,
+          lastseen: new Date().toLocaleString(),
+        },
+        {
+          // Only write bio/avatar/username on first insert; don't overwrite
+          // if the user has already customised their profile.
+          onConflict: 'uid',
+          ignoreDuplicates: true,
+        }
+      );
+
+    if (upsertErr) {
+      console.error('Supabase upsert error:', upsertErr);
+    }
+
+    return firebaseUser;
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    // Ignore popup-closed-by-user — not an error worth toasting
+    if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+      toast.error(error.message || 'Google sign-in failed');
+    }
+    return null;
   }
 };
 
