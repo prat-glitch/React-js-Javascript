@@ -17,6 +17,8 @@ const Sidebar = ({ setMobileView }) => {
     setSelectedChatUser,
     unreadChats,
     markChatAsRead,
+    theme,
+    setTheme,
   } = useContext(Appcontext)
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -71,23 +73,34 @@ const Sidebar = ({ setMobileView }) => {
     .filter((u) => u && u.uid)
     .sort((a, b) => b.updatedAt - a.updatedAt)
   }, [userChats, allUsers])
-    console.log(recentChatUsers);
-    console.log(userChats);
 
   return (
-    <div className="flex flex-col lg:flex-row bg-white w-full h-full relative overflow-hidden">
-      <div className="hidden lg:flex w-[220px] bg-slate-50 flex-col p-6 flex-shrink-0 border-r border-slate-200 relative z-10">
-        <div className="mb-10">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center">
-              <img src={assets.logo_icon} className="w-5 h-5" alt="logo" />
-            </div>
-            <div>
-              <h1 className="text-[15px] font-black text-slate-800 leading-tight">FluidChat</h1>
-              <p className="text-[10px] font-semibold text-slate-400">Premium Messaging</p>
-            </div>
-          </div>
+    <div className="flex flex-col lg:flex-row bg-white dark:bg-[#111b21] w-full h-full relative overflow-hidden">
+      {/* Left Nav Rail — 64px icon-only on desktop, hidden on mobile */}
+      <div className="hidden lg:flex w-[64px] bg-slate-50 dark:bg-[#111b21] flex-col items-center py-6 gap-2 flex-shrink-0 border-r border-slate-200 dark:border-[#202c33] relative z-10">
+        {/* Logo */}
+        <div className="w-9 h-9 rounded-xl bg-white dark:bg-[#202c33] shadow-sm flex items-center justify-center mb-2">
+          <img src={assets.logo_icon} className="w-5 h-5" alt="logo" />
         </div>
+
+        {/* Theme Toggle Button */}
+        <button
+          onClick={() => setTheme(prev => prev === 'light' ? 'dark' : 'light')}
+          title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+          className="w-10 h-10 mb-4 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-all duration-200"
+        >
+          {theme === 'light' ? (
+            /* Moon Icon */
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          ) : (
+            /* Sun Icon */
+            <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+            </svg>
+          )}
+        </button>
 
         <NavigationMenu
           navItems={navItems}
@@ -97,11 +110,11 @@ const Sidebar = ({ setMobileView }) => {
         />
       </div>
 
-      <div className="flex-1 flex flex-col bg-white overflow-hidden border-r border-slate-100">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#111b21] overflow-hidden border-r border-slate-100 dark:border-transparent">
         <div className="p-6 pb-4">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Messages</h2>
-            <button onClick={() => setActiveTab("contacts")} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Messages</h2>
+            <button onClick={() => setActiveTab("contacts")} className="w-8 h-8 rounded-full bg-slate-100 dark:bg-[#202c33] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center justify-center transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path>
               </svg>
@@ -117,7 +130,7 @@ const Sidebar = ({ setMobileView }) => {
             <input
               type="text"
               placeholder="Search conversations..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 text-sm font-medium text-slate-700 placeholder:text-slate-400 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-[#202c33] text-sm font-medium text-slate-700 dark:text-[#e9edef] placeholder:text-slate-400 dark:placeholder:text-[#8696a0] border border-slate-200 dark:border-transparent focus:bg-white dark:focus:bg-[#2a3942] focus:ring-2 focus:ring-blue-500 dark:focus:ring-emerald-500 outline-none transition-all"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -170,7 +183,7 @@ const Sidebar = ({ setMobileView }) => {
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="lg:hidden absolute bottom-0 left-0 right-0 h-[64px] bg-white border-t border-slate-200 flex items-center justify-around px-4 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+      <div className="lg:hidden absolute bottom-0 left-0 right-0 h-[64px] bg-white dark:bg-[#111b21] border-t border-slate-200 dark:border-[#202c33] flex items-center justify-around px-4 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.02)] dark:shadow-none">
         {navItems.map((item) => (
           <button 
             key={item.id}

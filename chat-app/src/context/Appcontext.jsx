@@ -21,21 +21,36 @@ const Appcontextprovider = (props) => {
   const [selectedChatUser, setSelectedChatUser] = useState(null);
   const [unreadChats, setUnreadChats] = useState({}); // {recipientId: count}
   const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
 
   const presenceChannelRef = useRef(null);
+  const initializedRef = useRef(false); // guard: don't re-run setup on token refresh
 
   // ---------- Auth state & Token Exchange ----------
+  // onIdTokenChanged fires on:
+  //   1. Initial sign-in (any method — email, Google, etc.)
+  //   2. Every time Firebase silently refreshes its token (~1 hour)
+  //      → Supabase JWT is automatically refreshed too
+  //   3. Sign-out (firebaseUser is null)
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = auth.onIdTokenChanged(async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        
+
         try {
-          // Seed the Realtime WebSocket with an initial token so that
-          // realtime subscriptions work right after sign-in.
-          // The REST client now fetches a fresh token dynamically per-request
-          // via the custom fetch wrapper in supabase.js.
-          const firebasetoken = await firebaseUser.getIdToken(false);
+          // Always refresh the Supabase JWT whenever Firebase rotates the token
+          const firebasetoken = await firebaseUser.getIdToken();
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-token`,
             {
@@ -45,27 +60,33 @@ const Appcontextprovider = (props) => {
             }
           );
 
-          if (response.ok) {
-            const { supabasetoken } = await response.json();
-            // setSupabaseToken is now a lightweight helper that only
-            // seeds the Realtime WebSocket auth token.
-            setSupabaseToken(supabasetoken);
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Token exchange failed: ${response.status} - ${errText}`);
           }
 
-          await loaduserdata(firebaseUser.uid);
-          setupPresence(firebaseUser.uid);
-        } catch (err) {
-          console.error("Token exchange failed:", err);
-        }
+          const { supabasetoken } = await response.json();
+          setSupabaseToken(supabasetoken); // recreates the authenticated Supabase client
 
+          // Only run the one-time setup on first sign-in, not on every token refresh
+          if (!initializedRef.current) {
+            initializedRef.current = true;
+            await loaduserdata(firebaseUser.uid);
+            setupPresence(firebaseUser.uid);
+          }
+        } catch (err) {
+          console.error('Token exchange failed:', err);
+        }
       } else {
+        // Sign-out: reset everything
+        initializedRef.current = false;
         setUser(null);
         setuserdata(null);
         setSelectedChatUser(null);
         if (presenceChannelRef.current) {
           presenceChannelRef.current.unsubscribe();
         }
-        if (location.pathname !== "/") navigate("/");
+        if (location.pathname !== '/') navigate('/');
       }
     });
 
@@ -75,7 +96,6 @@ const Appcontextprovider = (props) => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   // ---------- Load profile ----------
   const loaduserdata = async (uid) => {
@@ -94,7 +114,7 @@ const Appcontextprovider = (props) => {
             uid: fbUser.uid,
             username: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
             email: fbUser.email,
-            avatar: "",
+            avatar: fbUser.photoURL || '',   // Google users get their profile picture
             bio: "Hey there! I am using Chat App",
             online: true,
             lastseen: new Date().toLocaleString(),
@@ -268,7 +288,9 @@ const Appcontextprovider = (props) => {
     loaduserdata,
     unreadChats,
     markChatAsRead,
-  }), [user, userdata, enrichedAllUsers, userChats, selectedChatUser, unreadChats]);
+    theme,
+    setTheme,
+  }), [user, userdata, enrichedAllUsers, userChats, selectedChatUser, unreadChats, theme]);
 
   return (
     <Appcontext.Provider value={value}>

@@ -1,116 +1,204 @@
-import React, { useContext } from 'react'
+import React, { useContext, useState, useEffect } from 'react'
 import assets from '../../assets/assets'
-import { logout } from '../../config/firebase'
 import { Appcontext } from '../../context/Appcontext'
-import { useNavigate } from 'react-router-dom'
+import { getSupabase } from '../../config/supabase'
 
-const Rightsidebar = () => {
-  const { userdata, selectedChatUser } = useContext(Appcontext)
-  const navigate = useNavigate()
+const Rightsidebar = ({ showContactInfo, setShowContactInfo }) => {
+  const { userdata, selectedChatUser, getChatId } = useContext(Appcontext)
 
-  const handleLogout = async () => {
-    await logout()
-    navigate('/')
-  }
+  const [sharedMedia, setSharedMedia] = useState([])
+  const [mediaLoading, setMediaLoading] = useState(false)
 
-  // Use selected chat user if available, else show logged in user
-  const displayUser = selectedChatUser || userdata
-  const online = displayUser ? displayUser.online : false
+  /* ── fetch real shared images when contact panel opens ── */
+  useEffect(() => {
+    if (!showContactInfo || !selectedChatUser || !userdata) return
 
-  if (!displayUser) return null
+    const fetchMedia = async () => {
+      setMediaLoading(true)
+      try {
+        const chatId = getChatId(userdata.uid, selectedChatUser.uid)
+        const { data } = await getSupabase()
+          .from('messages')
+          .select('media_url, media_type, created_at')
+          .eq('chat_id', chatId)
+          .eq('media_type', 'image')
+          .order('created_at', { ascending: false })
+          .limit(9)
+        setSharedMedia(data || [])
+      } catch { setSharedMedia([]) }
+      finally { setMediaLoading(false) }
+    }
+
+    fetchMedia()
+  }, [showContactInfo, selectedChatUser?.uid])
+
+  /* ── nothing to show if panel is closed or no user ── */
+  if (!showContactInfo || !selectedChatUser) return null
+
+  const isOnline = selectedChatUser.online || false
 
   return (
-    <div className="h-full flex flex-col bg-white overflow-y-auto px-6 py-10">
-      {/* ── User Card ── */}
-      <div className="flex flex-col items-center text-center mb-10">
-        <div className="relative mb-6">
-          <div className="w-28 h-28 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-xl relative z-10">
-            <img src={displayUser.avatar || assets.avatar_icon} className="w-full h-full object-cover" alt="" />
-          </div>
-          {/* Decorative background circle */}
-          <div className="absolute -inset-2 bg-blue-100/50 rounded-[3rem] blur-xl opacity-70 z-0"></div>
-          {online && (
-            <div className="absolute -bottom-1 -right-1 z-20 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
-              <span className="w-4 h-4 bg-emerald-500 rounded-full"></span>
-            </div>
+    /* Slide-in panel — sits on top of the right sidebar column */
+    <div
+      style={{
+        position: 'absolute', inset: 0, zIndex: 100,
+        background: '#fff',
+        display: 'flex', flexDirection: 'column',
+        animation: 'slideInRight 0.22s ease',
+        overflowY: 'auto',
+      }}
+    >
+      {/* ── Header bar ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '18px 20px',
+        borderBottom: '1px solid #f1f5f9',
+        flexShrink: 0,
+        position: 'sticky', top: 0, background: '#fff', zIndex: 10,
+      }}>
+        <button
+          onClick={() => setShowContactInfo(false)}
+          style={{
+            width: 34, height: 34, borderRadius: '50%',
+            border: 'none', background: '#f1f5f9',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: '#475569', flexShrink: 0,
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
+          onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+          Contact info
+        </span>
+      </div>
+
+      {/* ── Avatar section ── */}
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        padding: '32px 24px 24px',
+        borderBottom: '1px solid #f1f5f9',
+      }}>
+        <div style={{ position: 'relative', marginBottom: 16 }}>
+          <img
+            src={selectedChatUser.avatar || assets.avatar_icon}
+            alt=""
+            style={{
+              width: 96, height: 96, borderRadius: '50%', objectFit: 'cover',
+              border: '3px solid #fff',
+              boxShadow: '0 4px 24px rgba(15,23,42,0.12)',
+            }}
+          />
+          {isOnline && (
+            <span style={{
+              position: 'absolute', bottom: 4, right: 4,
+              width: 14, height: 14, background: '#10b981',
+              borderRadius: '50%', border: '2.5px solid white',
+            }} />
           )}
         </div>
-        
-        <h3 className="text-xl font-extrabold text-slate-800 mb-1">{displayUser.username}</h3>
-        <div className={`status-pill ${online ? 'status-pill status-online' : 'status-pill status-offline'}`}>
-          {online ? 'Active Now' : displayUser.lastseen ? `Last seen ${displayUser.lastseen}` : 'Offline'}
+
+        {/* Name */}
+        <h2 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', margin: 0, textAlign: 'center' }}>
+          {selectedChatUser.username}
+        </h2>
+
+        {/* Email */}
+        <p style={{ fontSize: 13, color: '#2563eb', fontWeight: 500, margin: '6px 0 0', textAlign: 'center' }}>
+          {selectedChatUser.email}
+        </p>
+
+        {/* Online / last seen */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+          {isOnline ? (
+            <>
+              <span style={{ width: 7, height: 7, background: '#10b981', borderRadius: '50%' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#10b981' }}>Online</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>
+              {selectedChatUser.lastseen ? `Last seen ${selectedChatUser.lastseen}` : 'Offline'}
+            </span>
+          )}
         </div>
-        <p className="mt-4 text-sm text-slate-400 font-medium px-4 leading-relaxed">
-          {displayUser.bio || "No bio available. Communication in progress."}
+      </div>
+
+      {/* ── About / Bio ── */}
+      <div style={{ padding: '20px 20px 0', borderBottom: '1px solid #f1f5f9' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+          About
+        </p>
+        <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.6, margin: '0 0 20px' }}>
+          {selectedChatUser.bio || 'Hey there! I am using FluidChat.'}
         </p>
       </div>
 
-      {/* ── Information Cards ── */}
-      <div className="flex flex-col gap-4 mb-10">
-        <div className="fluid-card p-5 !rounded-3xl border border-slate-50">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Account Details</p>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-              </div>
-              <span className="text-sm font-medium text-slate-600 truncate">{displayUser.email}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              </div>
-              <span className="text-sm font-medium text-slate-600">Local Time: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="fluid-card p-5 !rounded-3xl border border-slate-50">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Fluidity Metadata</p>
-          <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
-            <span>Security Status</span>
-            <span className="text-blue-500 flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M2.166 4.9L10 1.55l7.834 3.35a1 1 0 01.666.945V10c0 5.825-4.139 10.518-8.167 12.002a1 1 0 01-.666 0C5.639 20.518 1.5 15.825 1.5 10V5.845a1 1 0 01.666-.945zM10 5a1 1 0 011 1v2a1 1 0 11-2 0V6a1 1 0 011-1zm1 5a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd"></path></svg>
-              Verified
+      {/* ── Media, links and docs ── */}
+      <div style={{ padding: '20px 20px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Gallery icon */}
+            <svg width="18" height="18" fill="none" stroke="#475569" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+              Media, links and docs
             </span>
           </div>
+          {sharedMedia.length > 0 && (
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#2563eb' }}>
+              {sharedMedia.length}
+            </span>
+          )}
         </div>
-      </div>
 
-      {/* ── Actions ── */}
-      {!selectedChatUser && (
-        <div className="flex flex-col gap-3 mt-auto">
-          <button 
-            onClick={() => navigate('/profile')} 
-            className="w-full py-4 bg-blue-600 text-white rounded-[2rem] font-bold text-sm shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95"
-          >
-            Edit Fluid Profile
-          </button>
-          <button 
-            onClick={handleLogout} 
-            className="w-full py-4 text-slate-400 font-bold text-sm hover:text-red-400 transition-all flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-            Logout session
-          </button>
-        </div>
-      )}
-
-      {selectedChatUser && (
-        <div className="mt-auto">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Shared Media</p>
-          <div className="grid grid-cols-3 gap-2">
-            {[assets.pic1, assets.pic2, assets.pic3, assets.pic4].map((pic, i) => (
-              <div key={i} className="aspect-square bg-slate-50 rounded-2xl overflow-hidden hover:opacity-80 transition-opacity cursor-pointer">
-                <img src={pic} className="w-full h-full object-cover" alt="" />
+        {/* Media grid */}
+        {mediaLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+            <svg className="animate-spin" width="20" height="20" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#94a3b8" strokeWidth="4"/>
+              <path className="opacity-75" fill="#94a3b8" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+          </div>
+        ) : sharedMedia.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginBottom: 20 }}>
+            {sharedMedia.map((m, i) => (
+              <div
+                key={i}
+                onClick={() => window.open(m.media_url, '_blank')}
+                style={{
+                  aspectRatio: '1', borderRadius: 8, overflow: 'hidden',
+                  cursor: 'pointer', background: '#f1f5f9',
+                }}
+              >
+                <img
+                  src={m.media_url}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'opacity 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = 0.8}
+                  onMouseLeave={e => e.currentTarget.style.opacity = 1}
+                />
               </div>
             ))}
-            <div className="aspect-square bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 hover:bg-slate-100 cursor-pointer">
-              <span className="text-xl font-bold">+</span>
-            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            padding: '24px 0 20px', textAlign: 'center',
+          }}>
+            <div style={{ width: 44, height: 44, background: '#f8fafc', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+              <svg width="20" height="20" fill="none" stroke="#cbd5e1" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+            </div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', margin: 0 }}>No media shared yet</p>
+            <p style={{ fontSize: 11, color: '#cbd5e1', margin: '4px 0 0' }}>Photos sent in this chat appear here</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

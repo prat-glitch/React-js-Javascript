@@ -92,9 +92,9 @@ const Call = () => {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: callType === 'video',
           audio: { 
-            echoCancellation: true, 
-            noiseSuppression: true, 
-            autoGainControl: true 
+            echoCancellation: false, 
+            noiseSuppression: false, 
+            autoGainControl: false 
           }
         });
 
