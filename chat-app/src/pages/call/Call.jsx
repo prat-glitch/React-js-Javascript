@@ -350,12 +350,6 @@ const Call = () => {
     const peerName = Object.values(participants).find(p => p.uid !== userdata.uid)?.username || 'User';
     return (
       <div className="relative w-full h-screen overflow-hidden">
-        <div style={{ display: 'none' }}>
-          <VideoTile stream={localStream} label="You" muted={true} />
-          {sortedRemoteIds.map((peerId) => (
-             <VideoTile key={peerId} stream={remoteStreams[peerId]} label={participants[peerId]?.username || 'Guest'} />
-          ))}
-        </div>
 
         <div className="absolute inset-0 z-0">
           <Chat />

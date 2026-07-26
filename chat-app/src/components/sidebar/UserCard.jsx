@@ -4,40 +4,42 @@ import assets from "../../assets/assets"
 const UserCard = ({ user, lastMsg, isSelected, onClick, isOnline, unread }) => (
   <div 
     className={`
-      flex items-center gap-4 py-3 px-4 mx-2 cursor-pointer rounded-xl transition-all duration-200 group
-      ${isSelected ? "bg-blue-50 dark:bg-[#2a3942] text-blue-600 dark:text-[#e9edef]" : "hover:bg-slate-50 dark:hover:bg-[#202c33]"}
+      flex items-center gap-4 p-4 cursor-pointer rounded-2xl transition-all duration-200 border-l-4
+      ${isSelected ? "bg-blue-50 dark:bg-[#273647]/40 dark:border-[#b4c5ff] border-blue-500" : "hover:bg-slate-50 dark:hover:bg-[#273647]/20 border-transparent dark:border-transparent"}
     `}
     onClick={onClick}
   >
     <div className="relative flex-shrink-0">
-      <img src={user.avatar || assets.avatar_icon} className="w-14 h-14 rounded-full object-cover" alt={user.username} />
-      {isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-[#111b21]"></span>}
+      <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-[#0d1c2d]">
+        <img src={user.avatar || assets.avatar_icon} className="w-full h-full object-cover" alt={user.username} />
+      </div>
+      {isOnline && (
+        <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#4ade80] rounded-full shadow-[0_0_0_2px_#ffffff] dark:shadow-[0_0_0_2px_#122131]"></span>
+      )}
     </div>
     
     <div className="flex-1 min-w-0">
-
       {/* Row 1 — name + timestamp */}
-      <div className="flex items-center justify-between mb-1">
-        <h4 className={`text-sm font-semibold truncate ${isSelected ? "text-blue-900 dark:text-[#e9edef]" : "text-slate-800 dark:text-[#e9edef]"}`}>
+      <div className="flex items-baseline justify-between mb-0.5">
+        <span className={`text-[16px] font-bold truncate ${isSelected ? "text-blue-900 dark:text-[#d4e4fa]" : "text-slate-800 dark:text-[#d4e4fa]"}`}>
           {user.username}
-        </h4>
-        <span className="text-[11px] text-slate-400 dark:text-[#8696a0] ml-1 flex-shrink-0">
+        </span>
+        <span className="text-[12px] font-medium text-slate-400 dark:text-[#c3c6d7] ml-2 flex-shrink-0">
           {user.updatedAt ? new Date(user.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null}
         </span>
       </div>
 
       {/* Row 2 — last message + unread badge */}
       <div className="flex items-center justify-between">
-        <p className={`text-xs truncate flex-1 ${isSelected ? "text-blue-600 dark:text-[#e9edef] font-medium" : unread > 0 ? "text-slate-800 dark:text-[#e9edef] font-medium" : "text-slate-500 dark:text-[#8696a0]"}`}>
+        <p className={`text-[14px] truncate flex-1 ${isSelected ? "text-blue-600 dark:text-[#b4c5ff] font-medium" : unread > 0 ? "text-slate-800 dark:text-[#d4e4fa] font-medium" : "text-slate-500 dark:text-[#c3c6d7]"}`}>
           {lastMsg || (isOnline ? "Active now" : "New connection")}
         </p>
         {unread > 0 && (
-          <span className="ml-2 px-2 min-w-[1.25rem] h-5 bg-blue-600 dark:bg-emerald-500 text-white dark:text-[#111b21] text-[11px] flex items-center justify-center rounded-full font-bold flex-shrink-0">
+          <span className="ml-2 px-2 min-w-[1.25rem] h-5 bg-blue-600 dark:bg-[#b4c5ff] text-white dark:text-[#00174b] text-[11px] flex items-center justify-center rounded-lg font-bold flex-shrink-0">
             {unread}
           </span>
         )}
       </div>
-
     </div>
   </div>
 )

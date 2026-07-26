@@ -249,7 +249,7 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
   if (activeTab !== "contacts" && activeTab !== "settings") return null
 
   /* ─── panel base style ─── */
-  const panelBase = "absolute top-0 left-0 lg:left-[64px] right-0 bottom-0 z-50 bg-white flex flex-col overflow-x-hidden"
+  const panelBase = "absolute top-0 left-0 lg:left-[64px] right-0 bottom-0 z-50 bg-white dark:bg-[#111b21] flex flex-col overflow-x-hidden"
 
   /* ════════════════ SETTINGS ════════════════ */
   if (activeTab === "settings") {
@@ -260,10 +260,10 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
           <div style={{ padding: "24px 20px", maxWidth: 560, width: "100%" }}>
 
             {/* Profile row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 16, paddingBottom: 24, borderBottom: "1px solid #f1f5f9", marginBottom: 20 }}>
+            <div className="flex items-center gap-4 pb-6 mb-5 border-b border-slate-100 dark:border-[#202c33]">
               <div style={{ position: "relative", flexShrink: 0 }}>
                 <img src={userdata?.avatar || assets.avatar_icon} alt=""
-                  style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: "3px solid #f1f5f9", opacity: uploading ? 0.5 : 1 }} />
+                  className="w-16 h-16 rounded-full object-cover border-[3px] border-slate-100 dark:border-[#202c33]" style={{ opacity: uploading ? 0.5 : 1 }} />
                 <button disabled={uploading} onClick={() => fileInputRef.current?.click()}
                   style={{ position: "absolute", bottom: 0, right: 0, width: 24, height: 24, background: "#2563eb", borderRadius: "50%", border: "2.5px solid white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <svg width="11" height="11" fill="none" stroke="white" viewBox="0 0 24 24">
@@ -273,7 +273,7 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
                 <input type="file" ref={fileInputRef} onChange={handleAvatarChange} accept=".png,.jpg,.jpeg" style={{ display: "none" }} />
               </div>
               <div>
-                <p style={{ fontSize: 16, fontWeight: 700, color: "#0f172a", margin: 0 }}>{userdata?.username}</p>
+                <p className="text-[16px] font-bold text-slate-900 dark:text-slate-100 m-0">{userdata?.username}</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
                   <span style={{ width: 7, height: 7, background: "#10b981", borderRadius: "50%" }} />
                   <span style={{ fontSize: 11, fontWeight: 600, color: "#10b981" }}>Online</span>
@@ -290,9 +290,8 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
                 { label: "Help & Support", sub: "FAQ and contact", iconPath: "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z", iconColor: "#059669", iconBg: "#f0fdf4", onClick: null },
               ].map(({ label, sub, iconPath, iconColor, iconBg, onClick }) => (
                 <button key={label} onClick={onClick || undefined}
-                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", background: "#fff", border: "1.5px solid #f1f5f9", borderRadius: 14, cursor: onClick ? "pointer" : "default", width: "100%", textAlign: "left", transition: "background 0.15s" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
-                  onMouseLeave={e => e.currentTarget.style.background = "#fff"}
+                  className="flex items-center gap-[14px] p-[12px_14px] bg-white dark:bg-[#111b21] border-[1.5px] border-slate-100 dark:border-transparent rounded-[14px] w-full text-left transition-colors hover:bg-slate-50 dark:hover:bg-[#202c33]"
+                  style={{ cursor: onClick ? "pointer" : "default" }}
                 >
                   <div style={{ width: 38, height: 38, background: iconBg, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <svg width="17" height="17" fill="none" stroke={iconColor} viewBox="0 0 24 24">
@@ -300,8 +299,8 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
                     </svg>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", margin: 0 }}>{label}</p>
-                    <p style={{ fontSize: 11, color: "#94a3b8", margin: "2px 0 0" }}>{sub}</p>
+                    <p className="text-[13px] font-bold text-slate-800 dark:text-slate-200 m-0">{label}</p>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-[2px] mb-0">{sub}</p>
                   </div>
                   <svg width="15" height="15" fill="none" stroke="#cbd5e1" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
@@ -328,10 +327,10 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
           {/* Title row: always single line, button never clips */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.02em" }}>
+              <h2 className="text-[18px] font-bold text-slate-900 dark:text-slate-100 m-0 tracking-[-0.02em]">
                 Contacts
               </h2>
-              <p style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500, margin: "2px 0 0" }}>
+              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 mt-[2px] mb-0">
                 {filteredUsers.length} {filteredUsers.length === 1 ? "person" : "people"}
               </p>
             </div>
@@ -360,12 +359,7 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
           </div>
 
           {/* Search bar */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            background: "#f8fafc", border: "1.5px solid #e2e8f0",
-            borderRadius: 10, padding: "0 12px", height: 38,
-            marginBottom: 16, boxSizing: "border-box", width: "100%",
-          }}>
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#202c33] border-[1.5px] border-slate-200 dark:border-transparent rounded-[10px] px-[12px] h-[38px] mb-[16px] w-full box-border">
             <svg width="14" height="14" fill="none" stroke="#94a3b8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
@@ -374,7 +368,7 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search contacts…"
-              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "#334155", fontWeight: 500, minWidth: 0 }}
+              className="flex-1 border-none outline-none bg-transparent text-[13px] font-medium min-w-0 text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery("")}
@@ -393,15 +387,15 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
           {/* Empty state */}
           {filteredUsers.length === 0 && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" }}>
-              <div style={{ width: 52, height: 52, background: "#f1f5f9", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+              <div className="w-[52px] h-[52px] bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-[14px]">
                 <svg width="24" height="24" fill="none" stroke="#94a3b8" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
               </div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#475569", margin: 0 }}>
+              <p className="text-[14px] font-bold m-0 text-slate-600 dark:text-slate-300">
                 {searchQuery ? "No matches" : "No contacts yet"}
               </p>
-              <p style={{ fontSize: 12, color: "#94a3b8", margin: "6px 0 0", maxWidth: 180 }}>
+              <p className="text-[12px] mt-[6px] mb-0 max-w-[180px] text-slate-400 dark:text-slate-500">
                 {searchQuery ? "Try a different name or email" : "Find people by email or phone"}
               </p>
               {!searchQuery && (
@@ -425,8 +419,8 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
             <div key={letter} style={{ marginBottom: 20 }}>
               {/* Letter divider */}
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px", marginBottom: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: "#94a3b8", letterSpacing: "0.1em" }}>{letter}</span>
-                <div style={{ flex: 1, height: 1, background: "#f1f5f9" }} />
+                <span className="text-[10px] font-bold tracking-[0.1em] text-slate-400 dark:text-slate-500">{letter}</span>
+                <div className="flex-1 h-px bg-slate-100 dark:bg-[#202c33]" />
               </div>
 
               {/* User rows */}
@@ -434,9 +428,7 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
                 <div
                   key={u.uid}
                   onClick={() => handleSelectUser(u)}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 8px", borderRadius: 12, cursor: "pointer", transition: "background 0.12s" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
-                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  className="flex items-center gap-3 p-[9px_8px] rounded-[12px] cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-[#202c33]"
                 >
                   {/* Avatar */}
                   <div style={{ position: "relative", flexShrink: 0 }}>
@@ -449,10 +441,10 @@ const ContactsList = ({ activeTab, allUsers, userdata, handleSelectUser }) => {
 
                   {/* Name */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <p className="text-[13px] font-bold m-0 overflow-hidden text-ellipsis whitespace-nowrap text-slate-900 dark:text-slate-100">
                       {u.username}
                     </p>
-                    <p style={{ fontSize: 11, color: "#94a3b8", margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <p className="text-[11px] mt-[2px] mb-0 overflow-hidden text-ellipsis whitespace-nowrap text-slate-400 dark:text-slate-500">
                       {u.email?.split("@")[0]}
                     </p>
                   </div>

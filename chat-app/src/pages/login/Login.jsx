@@ -89,41 +89,23 @@ const Login = () => {
 
   return (
     /* ── Outer background ── */
-    <div style={{ background: '#eef0fb' }}
-      className="min-h-screen flex items-center justify-center p-4"
-    >
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#eef0fb] dark:bg-[#0b141a]">
       {/* ── Card ── */}
       <div
-        className="w-full bg-white flex flex-col"
-        style={{
-          maxWidth: 400,
-          borderRadius: 16,
-          border: '1px solid #e2e4ef',
-          boxShadow: '0 4px 24px 0 rgba(60,70,130,0.07)',
-          padding: '36px 36px 32px',
-        }}
+        className="w-full bg-white dark:bg-[#111b21] flex flex-col shadow-[0_4px_24px_0_rgba(60,70,130,0.07)] dark:shadow-none border border-[#e2e4ef] dark:border-[#202c33] rounded-[16px] max-w-[400px] p-[36px_36px_32px]"
       >
         {/* ── Brand name ── */}
-        <p
-          className="text-center font-semibold mb-1"
-          style={{ color: '#2563eb', fontSize: 15, letterSpacing: '-0.01em' }}
-        >
+        <p className="text-center font-semibold mb-1 text-blue-600 dark:text-emerald-400 text-[15px] tracking-[-0.01em]">
           ChitChat
         </p>
 
         {/* ── Heading ── */}
-        <h1
-          className="text-center font-bold"
-          style={{ color: '#0f1117', fontSize: 26, lineHeight: 1.2, marginBottom: 6 }}
-        >
+        <h1 className="text-center font-bold text-[#0f1117] dark:text-white text-[26px] leading-[1.2] mb-[6px]">
           {isLogin ? 'Welcome Back' : 'Create Account'}
         </h1>
 
         {/* ── Subheading ── */}
-        <p
-          className="text-center"
-          style={{ color: '#9298ab', fontSize: 13.5, marginBottom: 24 }}
-        >
+        <p className="text-center text-[#9298ab] dark:text-slate-400 text-[13.5px] mb-6">
           {isLogin
             ? 'Please enter your details to sign in'
             : 'Fill in the details below to get started'}
@@ -135,18 +117,7 @@ const Login = () => {
           type="button"
           onClick={handleGoogleSignIn}
           disabled={anyBusy}
-          className="w-full flex items-center justify-center gap-2 font-medium transition-all"
-          style={{
-            height: 44,
-            border: '1.5px solid #d1d5e0',
-            borderRadius: 8,
-            background: '#fff',
-            color: '#1a1d27',
-            fontSize: 14,
-            cursor: anyBusy ? 'not-allowed' : 'pointer',
-            opacity: anyBusy ? 0.7 : 1,
-            marginBottom: 20,
-          }}
+          className={`w-full flex items-center justify-center gap-2 font-medium transition-all h-[44px] border-[1.5px] border-[#d1d5e0] dark:border-[#202c33] rounded-lg bg-white dark:bg-[#202c33] text-[#1a1d27] dark:text-white text-[14px] mb-5 ${anyBusy ? "cursor-not-allowed opacity-70" : "cursor-pointer hover:bg-slate-50 dark:hover:bg-[#2a3942]"}`}
         >
           {googleLoading
             ? <><Spinner /> Connecting…</>
@@ -155,24 +126,21 @@ const Login = () => {
         </button>
 
         {/* ── Divider ── */}
-        <div className="flex items-center gap-3" style={{ marginBottom: 20 }}>
-          <div style={{ flex: 1, height: 1, background: '#e2e4ef' }} />
-          <span style={{ color: '#9298ab', fontSize: 11, letterSpacing: '0.07em', fontWeight: 500 }}>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="flex-1 h-px bg-[#e2e4ef] dark:bg-[#202c33]" />
+          <span className="text-[#9298ab] dark:text-slate-500 text-[11px] tracking-[0.07em] font-medium">
             OR CONTINUE WITH EMAIL
           </span>
-          <div style={{ flex: 1, height: 1, background: '#e2e4ef' }} />
+          <div className="flex-1 h-px bg-[#e2e4ef] dark:bg-[#202c33]" />
         </div>
 
         {/* ── Form ── */}
-        <form onSubmit={onsubmithandler} className="flex flex-col" style={{ gap: 16 }}>
+        <form onSubmit={onsubmithandler} className="flex flex-col gap-4">
 
           {/* Full Name — sign-up only */}
           {!isLogin && (
-            <div className="flex flex-col" style={{ gap: 6 }}>
-              <label
-                htmlFor="username"
-                style={{ fontSize: 13.5, fontWeight: 500, color: '#374151' }}
-              >
+            <div className="flex flex-col gap-[6px]">
+              <label htmlFor="username" className="text-[13.5px] font-medium text-[#374151] dark:text-slate-300">
                 Full Name
               </label>
               <input
@@ -182,19 +150,14 @@ const Login = () => {
                 onChange={e => setusername(e.target.value)}
                 placeholder="John Doe"
                 required
-                style={inputStyle}
-                onFocus={e => Object.assign(e.target.style, inputFocusStyle)}
-                onBlur={e  => Object.assign(e.target.style, inputBlurStyle)}
+                className="w-full h-[44px] px-[14px] border-[1.5px] border-[#d1d5e0] dark:border-[#202c33] rounded-lg bg-white dark:bg-[#202c33] text-[14px] text-[#1a1d27] dark:text-white outline-none transition-all focus:border-blue-600 dark:focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] dark:focus:shadow-[0_0_0_3px_rgba(16,185,129,0.12)] placeholder-[#9298ab] dark:placeholder-slate-500"
               />
             </div>
           )}
 
           {/* Email */}
-          <div className="flex flex-col" style={{ gap: 6 }}>
-            <label
-              htmlFor="email"
-              style={{ fontSize: 13.5, fontWeight: 500, color: '#374151' }}
-            >
+          <div className="flex flex-col gap-[6px]">
+            <label htmlFor="email" className="text-[13.5px] font-medium text-[#374151] dark:text-slate-300">
               Email Address
             </label>
             <input
@@ -204,26 +167,18 @@ const Login = () => {
               onChange={e => setemail(e.target.value)}
               placeholder="name@company.com"
               required
-              style={inputStyle}
-              onFocus={e => Object.assign(e.target.style, inputFocusStyle)}
-              onBlur={e  => Object.assign(e.target.style, inputBlurStyle)}
+              className="w-full h-[44px] px-[14px] border-[1.5px] border-[#d1d5e0] dark:border-[#202c33] rounded-lg bg-white dark:bg-[#202c33] text-[14px] text-[#1a1d27] dark:text-white outline-none transition-all focus:border-blue-600 dark:focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] dark:focus:shadow-[0_0_0_3px_rgba(16,185,129,0.12)] placeholder-[#9298ab] dark:placeholder-slate-500"
             />
           </div>
 
           {/* Password */}
-          <div className="flex flex-col" style={{ gap: 6 }}>
+          <div className="flex flex-col gap-[6px]">
             <div className="flex items-center justify-between">
-              <label
-                htmlFor="password"
-                style={{ fontSize: 13.5, fontWeight: 500, color: '#374151' }}
-              >
+              <label htmlFor="password" className="text-[13.5px] font-medium text-[#374151] dark:text-slate-300">
                 Password
               </label>
               {isLogin && (
-                <a
-                  href="#"
-                  style={{ fontSize: 13, color: '#2563eb', fontWeight: 500, textDecoration: 'none' }}
-                >
+                <a href="#" className="text-[13px] text-blue-600 dark:text-emerald-400 font-medium no-underline hover:underline">
                   Forgot password?
                 </a>
               )}
@@ -238,9 +193,7 @@ const Login = () => {
                 onChange={e => setpassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                style={{ ...inputStyle, paddingRight: 44 }}
-                onFocus={e => Object.assign(e.target.style, { ...inputStyle, ...inputFocusStyle, paddingRight: '44px' })}
-                onBlur={e  => Object.assign(e.target.style, { ...inputStyle, paddingRight: '44px' })}
+                className="w-full h-[44px] pl-[14px] pr-[44px] border-[1.5px] border-[#d1d5e0] dark:border-[#202c33] rounded-lg bg-white dark:bg-[#202c33] text-[14px] text-[#1a1d27] dark:text-white outline-none transition-all focus:border-blue-600 dark:focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] dark:focus:shadow-[0_0_0_3px_rgba(16,185,129,0.12)] placeholder-[#9298ab] dark:placeholder-slate-500"
               />
               <button
                 type="button"
@@ -268,29 +221,23 @@ const Login = () => {
 
           {/* Remember / Terms */}
           {isLogin ? (
-            <label
-              className="flex items-center gap-2"
-              style={{ fontSize: 13.5, color: '#374151', cursor: 'pointer', userSelect: 'none' }}
-            >
+            <label className="flex items-center gap-2 text-[13.5px] text-[#374151] dark:text-slate-300 cursor-pointer select-none">
               <input
                 type="checkbox"
                 id="remember"
                 checked={remember}
                 onChange={e => setRemember(e.target.checked)}
-                style={checkboxStyle}
+                className="w-[15px] h-[15px] rounded border-[1.5px] border-[#d1d5e0] dark:border-[#202c33] cursor-pointer accent-blue-600 dark:accent-emerald-500 shrink-0"
               />
               Remember for 30 days
             </label>
           ) : (
-            <label
-              className="flex items-center gap-2"
-              style={{ fontSize: 13.5, color: '#374151', cursor: 'pointer', userSelect: 'none' }}
-            >
+            <label className="flex items-center gap-2 text-[13.5px] text-[#374151] dark:text-slate-300 cursor-pointer select-none">
               <input
                 type="checkbox"
                 id="terms"
                 required
-                style={checkboxStyle}
+                className="w-[15px] h-[15px] rounded border-[1.5px] border-[#d1d5e0] dark:border-[#202c33] cursor-pointer accent-blue-600 dark:accent-emerald-500 shrink-0"
               />
               I agree to the Terms &amp; Conditions
             </label>
@@ -301,19 +248,7 @@ const Login = () => {
             id="email-submit-btn"
             type="submit"
             disabled={anyBusy}
-            className="w-full font-semibold text-white flex items-center justify-center gap-2 transition-all"
-            style={{
-              height: 46,
-              borderRadius: 8,
-              border: 'none',
-              background: anyBusy ? '#4f6ae0' : '#2040d4',
-              fontSize: 15,
-              cursor: anyBusy ? 'not-allowed' : 'pointer',
-              letterSpacing: '0.01em',
-              marginTop: 2,
-            }}
-            onMouseEnter={e => { if (!anyBusy) e.target.style.background = '#1a35c0' }}
-            onMouseLeave={e => { if (!anyBusy) e.target.style.background = '#2040d4' }}
+            className={`w-full font-semibold text-white flex items-center justify-center gap-2 transition-all h-[46px] rounded-lg text-[15px] tracking-[0.01em] mt-[2px] ${anyBusy ? "bg-[#4f6ae0] dark:bg-emerald-700 cursor-not-allowed" : "bg-blue-600 dark:bg-emerald-600 hover:bg-blue-700 dark:hover:bg-emerald-700 cursor-pointer"}`}
           >
             {loading
               ? <><Spinner /> Processing…</>
@@ -323,23 +258,12 @@ const Login = () => {
         </form>
 
         {/* ── Footer link ── */}
-        <p
-          className="text-center"
-          style={{ fontSize: 13.5, color: '#6b7280', marginTop: 24 }}
-        >
+        <p className="text-center text-[13.5px] text-[#6b7280] dark:text-slate-400 mt-6">
           {isLogin ? "Don't have an account? " : 'Already have an account? '}
           <button
             type="button"
             onClick={switchState}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              color: '#2563eb',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: 13.5,
-            }}
+            className="bg-transparent border-none p-0 text-blue-600 dark:text-emerald-400 font-semibold cursor-pointer text-[13.5px] hover:underline"
           >
             {isLogin ? 'Sign Up' : 'Log In'}
           </button>

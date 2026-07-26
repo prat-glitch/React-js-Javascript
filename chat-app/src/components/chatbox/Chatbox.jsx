@@ -474,7 +474,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
 
       {/* ── INPUT AREA ── */}
       <div
-        className="px-6 md:px-14 py-10 relative z-20 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-300/40 dark:border-transparent"
+        className="px-4 md:px-14 py-3 md:py-6 relative z-20 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-300/40 dark:border-transparent"
       >
 
         {/* Emoji Picker Popup */}
