@@ -29,23 +29,12 @@ const Sidebar = ({ setMobileView }) => {
     return Object.values(unreadChats || {}).reduce((a, b) => a + b, 0);
   }, [unreadChats])
 
-  const [deferredPrompt, setDeferredPrompt] = useState(null)
-  
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault()
-      setDeferredPrompt(e)
-    }
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-  }, [])
-
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt()
-      const { outcome } = await deferredPrompt.userChoice
+    if (window.deferredPrompt) {
+      window.deferredPrompt.prompt()
+      const { outcome } = await window.deferredPrompt.userChoice
       if (outcome === 'accepted') {
-        setDeferredPrompt(null)
+        window.deferredPrompt = null
       }
     } else {
       alert("To install Samlap:\n\n💻 On PC: Click the install icon (a screen with an arrow) in the far right of your browser's address bar.\n\n📱 On Mobile: Tap your browser's menu (⋮) or Share button and select 'Add to Home Screen'.")

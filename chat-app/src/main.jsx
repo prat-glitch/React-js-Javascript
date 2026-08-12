@@ -1,4 +1,10 @@
 import React from 'react'
+
+window.deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.deferredPrompt = e;
+});
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
