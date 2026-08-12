@@ -79,44 +79,64 @@ serve(async (req) => {
   }
 
   try {
-    const { record } = await req.json(); // Database webhook payload
-    const message = record;
-
-    if (!message || !message.sender_id || !message.chat_id) {
-      return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400 });
-    }
+    const payloadStr = await req.json(); // Accept either webhook or direct invocation
+    const { record, isCall, callerName, callType, recipientIds: directRecipients, chatId: callChatId } = payloadStr;
 
     // Create a service-role Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Determine the recipient(s) from the chat_id
-    // chat_id format: uid1_uid2 (sorted alphabetically)
-    const chatParts = message.chat_id.split('_');
-    const recipientIds = chatParts.filter((id: string) => id !== message.sender_id);
+    let recipientIds: string[] = [];
+    let pushTitle = '';
+    let pushBody = '';
+    let pushChatId = '';
+    let senderIdForMuteCheck = '';
+
+    if (isCall) {
+      recipientIds = directRecipients || [];
+      pushTitle = `Incoming ${callType} call...`;
+      pushBody = `${callerName} is calling you`;
+      pushChatId = callChatId;
+      senderIdForMuteCheck = payloadStr.callerId;
+    } else {
+      const message = record;
+      if (!message || !message.sender_id || !message.chat_id) {
+        return new Response(JSON.stringify({ error: 'Invalid payload' }), { status: 400 });
+      }
+
+      // Determine the recipient(s) from the chat_id
+      const chatParts = message.chat_id.split('_');
+      recipientIds = chatParts.filter((id: string) => id !== message.sender_id);
+      senderIdForMuteCheck = message.sender_id;
+
+      // Get sender info for notification text
+      const { data: sender } = await supabase
+        .from('users')
+        .select('username, avatar')
+        .eq('uid', message.sender_id)
+        .single();
+
+      const senderName = sender?.username || 'Someone';
+      pushTitle = senderName;
+      pushBody = message.text || (message.media_type === 'image' ? '📷 Photo' : '📎 File');
+      pushChatId = message.chat_id;
+    }
 
     if (recipientIds.length === 0) return new Response(JSON.stringify({ sent: 0 }));
 
-    // Get sender info for notification text
-    const { data: sender } = await supabase
-      .from('users')
-      .select('username, avatar')
-      .eq('uid', message.sender_id)
-      .single();
-
-    const senderName = sender?.username || 'Someone';
-
     // Check if chat is muted for recipient
     for (const recipientId of recipientIds) {
-      const { data: chatRecord } = await supabase
-        .from('user_chats')
-        .select('muted')
-        .eq('owner_id', recipientId)
-        .eq('recipient_id', message.sender_id)
-        .single();
+      if (senderIdForMuteCheck) {
+        const { data: chatRecord } = await supabase
+          .from('user_chats')
+          .select('muted')
+          .eq('owner_id', recipientId)
+          .eq('recipient_id', senderIdForMuteCheck)
+          .single();
 
-      if (chatRecord?.muted) {
-        console.log(`Chat muted for recipient ${recipientId}, skipping push`);
-        continue;
+        if (chatRecord?.muted) {
+          console.log(`Chat muted for recipient ${recipientId}, skipping push`);
+          continue;
+        }
       }
 
       // Get all push subscriptions for this recipient
@@ -128,11 +148,16 @@ serve(async (req) => {
       if (!subscriptions || subscriptions.length === 0) continue;
 
       // Build notification payload
-      const notifPayload = JSON.stringify({
-        title: senderName,
-        body: message.text || (message.media_type === 'image' ? '📷 Photo' : '📎 File'),
-        chatId: message.chat_id,
-      });
+      const payloadObj: any = {
+        title: pushTitle,
+        body: pushBody,
+        chatId: pushChatId,
+      };
+      if (isCall) {
+        payloadObj.isCall = true;
+        payloadObj.callType = callType;
+      }
+      const notifPayload = JSON.stringify(payloadObj);
 
       // Send push to each subscription
       for (const sub of subscriptions) {

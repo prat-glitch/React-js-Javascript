@@ -64,16 +64,30 @@ self.addEventListener('push', (event) => {
     data.body = event.data?.text() || data.body;
   }
 
+  const isCall = data.isCall;
+
+  const options = {
+    body: data.body,
+    icon: '/icon-512.png',
+    badge: '/icon-512.png',
+    tag: isCall ? 'samlap-call' : (data.chatId || 'samlap-message'),
+    vibrate: isCall ? [500, 1000, 500, 1000, 500] : [200, 100, 200],
+    requireInteraction: isCall ? true : false,
+    data: { 
+      chatId: data.chatId, 
+      url: isCall ? `/call/${data.chatId}?type=${data.callType}&role=callee` : '/chat' 
+    },
+  };
+
+  if (isCall) {
+    options.actions = [
+      { action: 'answer', title: 'Answer Call' },
+      { action: 'decline', title: 'Decline' }
+    ];
+  }
+
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/icon-512.png',
-      badge: '/icon-512.png',
-      tag: data.chatId || 'samlap-message',
-      data: { chatId: data.chatId, url: '/chat' },
-      vibrate: [200, 100, 200],
-      requireInteraction: false,
-    })
+    self.registration.showNotification(data.title, options)
   );
 });
 
@@ -81,16 +95,26 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
+  if (event.action === 'decline') {
+    return; // Just close the notification
+  }
+
+  const urlToOpen = new URL(event.notification.data?.url || '/chat', self.location.origin).href;
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If app is already open, focus it
+      // If app is already open, focus it and navigate to the target URL
       for (const client of clientList) {
-        if (client.url.includes('/chat') && 'focus' in client) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          // If it's a call, force navigation to the call screen
+          if (event.notification.data?.url?.includes('/call/')) {
+            client.navigate(urlToOpen);
+          }
           return client.focus();
         }
       }
       // Otherwise open a new window
-      return self.clients.openWindow(event.notification.data?.url || '/chat');
+      return self.clients.openWindow(urlToOpen);
     })
   );
 });

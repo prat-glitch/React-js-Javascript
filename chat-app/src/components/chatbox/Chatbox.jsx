@@ -315,6 +315,17 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
                   callType: 'audio'
                 }
               });
+              
+              getSupabase().functions.invoke('send-push', {
+                body: {
+                  isCall: true,
+                  callerName: userdata.username,
+                  callType: 'audio',
+                  chatId: chatId,
+                  recipientIds: [selectedChatUser.uid]
+                }
+              });
+
               navigate(`/call/${chatId}?type=audio&role=caller`)
             }}
             className="w-11 h-11 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 active:bg-slate-300 dark:active:bg-slate-600"
@@ -334,6 +345,17 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
                   callType: 'video'
                 }
               });
+
+              getSupabase().functions.invoke('send-push', {
+                body: {
+                  isCall: true,
+                  callerName: userdata.username,
+                  callType: 'video',
+                  chatId: chatId,
+                  recipientIds: [selectedChatUser.uid]
+                }
+              });
+
               navigate(`/call/${chatId}?type=video&role=caller`)
             }}
             className="w-11 h-11 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 active:bg-slate-300 dark:active:bg-slate-600"

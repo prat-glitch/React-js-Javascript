@@ -1,6 +1,6 @@
 import React from "react"
 
-const NavigationMenu = ({ navItems, activeTab, setActiveTab, handleLogout }) => {
+const NavigationMenu = ({ navItems, activeTab, setActiveTab, handleLogout, totalUnread }) => {
   return (
     <nav className="flex flex-col items-center gap-1 flex-1 w-full px-2">
       {navItems.map((item) => (
@@ -8,7 +8,7 @@ const NavigationMenu = ({ navItems, activeTab, setActiveTab, handleLogout }) => 
           key={item.id}
           onClick={() => setActiveTab(item.id)}
           title={item.label}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
+          className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 relative ${
             activeTab === item.id
               ? "bg-blue-600 text-white shadow-sm"
               : "text-slate-400 hover:bg-slate-200 hover:text-slate-700"
@@ -17,6 +17,11 @@ const NavigationMenu = ({ navItems, activeTab, setActiveTab, handleLogout }) => 
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
           </svg>
+          {item.id === "messages" && totalUnread > 0 && (
+            <span className="absolute -top-1 -right-1 w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-sm ring-2 ring-white dark:ring-[#122131]">
+              {totalUnread > 99 ? '99+' : totalUnread}
+            </span>
+          )}
         </button>
       ))}
 

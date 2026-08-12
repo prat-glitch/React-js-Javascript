@@ -25,6 +25,10 @@ const Sidebar = ({ setMobileView }) => {
   const [showSearch, setShowSearch] = useState(false)
   const [activeTab, setActiveTab] = useState("messages") // 'messages' | 'contacts' | 'settings'
 
+  const totalUnread = useMemo(() => {
+    return Object.values(unreadChats || {}).reduce((a, b) => a + b, 0);
+  }, [unreadChats])
+
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   
   useEffect(() => {
@@ -148,6 +152,7 @@ const Sidebar = ({ setMobileView }) => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           handleLogout={handleLogout}
+          totalUnread={totalUnread}
         />
       </div>
 
@@ -237,12 +242,17 @@ const Sidebar = ({ setMobileView }) => {
                 if (item.onClick) item.onClick();
                 else setActiveTab(item.id);
               }}
-              className={`flex flex-col items-center justify-center h-full gap-[4px] transition-all flex-1 ${isActive ? "text-slate-800 dark:text-slate-200" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+              className={`flex flex-col items-center justify-center h-full gap-[4px] transition-all flex-1 relative ${isActive ? "text-slate-800 dark:text-slate-200" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
             >
-              <div className={`px-[18px] py-[4px] rounded-full transition-all ${isActive ? "bg-slate-200/70 dark:bg-slate-700/80" : "bg-transparent"}`}>
+              <div className={`px-[18px] py-[4px] rounded-full transition-all relative ${isActive ? "bg-slate-200/70 dark:bg-slate-700/80" : "bg-transparent"}`}>
                 <svg className={`w-[22px] h-[22px]`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isActive ? "2.5" : "2"} d={item.icon}></path>
                 </svg>
+                {item.id === "messages" && totalUnread > 0 && (
+                  <span className="absolute top-0 right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-sm">
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </span>
+                )}
               </div>
               <span className={`text-[11px] ${isActive ? 'font-bold' : 'font-semibold'}`}>{item.label}</span>
             </button>
