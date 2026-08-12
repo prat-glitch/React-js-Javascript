@@ -251,7 +251,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
             </svg>
           </div>
         </div>
-        <h2 className="text-2xl font-bold mb-2 tracking-tight text-slate-800 dark:text-slate-100">FluidChat</h2>
+        <h2 className="text-2xl font-bold mb-2 tracking-tight text-slate-800 dark:text-slate-100">Samlap</h2>
         <p className="max-w-sm text-sm font-medium text-slate-500 dark:text-slate-400">Select a conversation from the sidebar to begin messaging.</p>
       </div>
     )
@@ -267,7 +267,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileView('sidebar')}
-            className="md:hidden w-8 h-8 rounded-full flex items-center justify-center transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+            className="md:hidden w-11 h-11 rounded-full flex items-center justify-center transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
           </button>
@@ -317,7 +317,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
               });
               navigate(`/call/${chatId}?type=audio&role=caller`)
             }}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50"
+            className="w-11 h-11 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 active:bg-slate-300 dark:active:bg-slate-600"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
           </button>
@@ -336,11 +336,11 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
               });
               navigate(`/call/${chatId}?type=video&role=caller`)
             }}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50"
+            className="w-11 h-11 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 active:bg-slate-300 dark:active:bg-slate-600"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
           </button>
-          <button className="w-9 h-9 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
+          <button className="w-11 h-11 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 active:bg-slate-300 dark:active:bg-slate-600">
             <svg className="w-5 h-5 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
           </button>
         </div>
@@ -474,7 +474,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
 
       {/* ── INPUT AREA ── */}
       <div
-        className="px-4 md:px-14 py-3 md:py-6 relative z-20 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-300/40 dark:border-transparent"
+        className="px-3 md:px-14 py-2 md:py-6 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:pb-6 relative z-20 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-300/40 dark:border-transparent"
       >
 
         {/* Emoji Picker Popup */}
@@ -508,7 +508,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
           {/* Plus icon to add attachments (Outside Pill) */}
           <button
             onClick={() => fileinputref.current?.click()}
-            className="w-[42px] h-[42px] mb-[5px] rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 transition-all focus:outline-none flex-shrink-0"
+            className="w-11 h-11 mb-[5px] rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 active:bg-slate-300 dark:active:bg-slate-600 transition-all focus:outline-none flex-shrink-0"
           >
             <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg>
           </button>
@@ -524,7 +524,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
             <button
               type="button"
               onClick={() => setShowEmojiPicker(v => !v)}
-              className={`w-10 h-10 mb-[1px] rounded-full flex items-center justify-center transition-all focus:outline-none flex-shrink-0 ${showEmojiPicker
+              className={`w-11 h-11 mb-[1px] rounded-full flex items-center justify-center transition-all focus:outline-none flex-shrink-0 ${showEmojiPicker
                 ? (theme === 'dark' ? 'bg-slate-700 text-emerald-400' : 'bg-slate-100 text-emerald-500')
                 : ('text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60')
                 }`}
@@ -559,7 +559,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
           <button
             onClick={sendMessage}
             disabled={sending || !input.trim()}
-            className="w-[42px] h-[42px] mb-[5px] rounded-full flex items-center justify-center transition-all disabled:opacity-50 flex-shrink-0 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60"
+            className="w-11 h-11 mb-[5px] rounded-full flex items-center justify-center transition-all disabled:opacity-50 flex-shrink-0 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 active:bg-slate-300 dark:active:bg-slate-600"
           >
             {input.trim() ? (
               <svg className={`w-[20px] h-[20px] ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-500'}`} fill="currentColor" viewBox="0 0 24 24">

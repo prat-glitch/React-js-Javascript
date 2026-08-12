@@ -36,7 +36,7 @@ const Chat = () => {
   }, [selectedChatUser]);
 
   if (userdata === null) {
-    return <div className="flex items-center justify-center min-h-screen font-medium text-slate-400">Loading FluidChat...</div>;
+    return <div className="flex items-center justify-center min-h-screen font-medium text-slate-400">Loading Samlap...</div>;
   }
 
   if (!userdata.avatar || !userdata.username) {

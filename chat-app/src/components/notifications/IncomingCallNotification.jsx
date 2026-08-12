@@ -62,7 +62,7 @@ const IncomingCallNotification = () => {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-[#100531] p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 min-w-[300px] border border-white/10 scale-100 transition-transform duration-300">
+      <div className="bg-[#100531] p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 w-[90%] max-w-[340px] border border-white/10 scale-100 transition-transform duration-300">
         <div className="relative">
           <div className="w-20 h-20 bg-[#002670] rounded-full flex items-center justify-center animate-pulse">
             <span className="text-4xl">📞</span>
@@ -79,13 +79,13 @@ const IncomingCallNotification = () => {
         <div className="flex gap-4 w-full mt-4">
           <button 
             onClick={handleReject}
-            className="flex-1 py-3 px-4 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition-colors"
+            className="flex-1 py-4 px-4 rounded-xl bg-red-500 hover:bg-red-600 active:bg-red-700 text-white font-semibold text-base transition-colors min-h-[48px]"
           >
             Decline
           </button>
           <button 
             onClick={handleAccept}
-            className="flex-1 py-3 px-4 rounded-xl bg-green-500 hover:bg-green-600 text-white font-medium transition-colors animate-pulse"
+            className="flex-1 py-4 px-4 rounded-xl bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-semibold text-base transition-colors animate-pulse min-h-[48px]"
           >
             Accept
           </button>

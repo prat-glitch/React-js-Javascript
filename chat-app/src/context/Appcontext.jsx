@@ -2,6 +2,7 @@ import { createContext, useEffect, useMemo, useState, useRef } from "react";
 import { auth } from "../config/firebase";
 import { setSupabaseToken, getSupabase } from "../config/supabase";
 import { useNavigate, useLocation } from "react-router-dom";
+import { isPushSupported, subscribeToPush, unsubscribeFromPush } from "../lib/pushNotifications";
 
 export const Appcontext = createContext();
 
@@ -74,6 +75,11 @@ const Appcontextprovider = (props) => {
             await loaduserdata(firebaseUser.uid);
             setupPresence(firebaseUser.uid);
           }
+
+          // Register push notifications
+          if (isPushSupported() && Notification.permission === 'granted') {
+            subscribeToPush(firebaseUser.uid);
+          }
         } catch (err) {
           console.error('Token exchange failed:', err);
         }
@@ -86,6 +92,12 @@ const Appcontextprovider = (props) => {
         if (presenceChannelRef.current) {
           presenceChannelRef.current.unsubscribe();
         }
+        
+        // Clean up push subscription
+        if (userdata?.uid) {
+          unsubscribeFromPush(userdata.uid);
+        }
+        
         if (location.pathname !== '/') navigate('/');
       }
     });

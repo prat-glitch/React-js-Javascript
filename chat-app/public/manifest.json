@@ -1,0 +1,22 @@
+{
+  "name": "Samlap",
+  "short_name": "Samlap",
+  "description": "Real-time messaging with Samlap",
+  "start_url": "/chat",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#4F46E5",
+  "background_color": "#0b141a",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "social",
+    "communication"
+  ]
+}

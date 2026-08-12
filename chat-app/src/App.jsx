@@ -9,6 +9,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './config/firebase.js';
 import { Appcontext } from './context/Appcontext.jsx';
 import IncomingCallNotification from './components/notifications/IncomingCallNotification.jsx';
+import PushPermissionBanner from './components/notifications/PushPermissionBanner.jsx';
 
 const App = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const App = () => {
     <>
       <ToastContainer />
       <IncomingCallNotification />
+      <PushPermissionBanner />
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/chat" element={<Chat />} />

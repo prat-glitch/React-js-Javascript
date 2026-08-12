@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react"
+import React, { useContext, useMemo, useState, useEffect } from "react"
 import assets from "../../assets/assets"
 import { Appcontext } from "../../context/Appcontext"
 import { logout } from "../../config/firebase"
@@ -24,6 +24,29 @@ const Sidebar = ({ setMobileView }) => {
   const [searchQuery, setSearchQuery] = useState("")
   const [showSearch, setShowSearch] = useState(false)
   const [activeTab, setActiveTab] = useState("messages") // 'messages' | 'contacts' | 'settings'
+
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  }, [])
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null)
+      }
+    } else {
+      alert("To install Samlap:\n\n💻 On PC: Click the install icon (a screen with an arrow) in the far right of your browser's address bar.\n\n📱 On Mobile: Tap your browser's menu (⋮) or Share button and select 'Add to Home Screen'.")
+    }
+  }
 
   const handleSelectUser = (user) => {
     setSelectedChatUser(user)
@@ -61,6 +84,12 @@ const Sidebar = ({ setMobileView }) => {
       id: "settings",
       label: "Settings",
       icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756-2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
+    },
+    {
+      id: "install",
+      label: "Install",
+      icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
+      onClick: handleInstallClick,
     },
     {
       id: "logout",
@@ -194,11 +223,11 @@ const Sidebar = ({ setMobileView }) => {
           )}
         </div>
         {/* Spacer for mobile bottom nav */}
-        <div className="h-[64px] lg:hidden w-full flex-shrink-0"></div>
+        <div className="lg:hidden w-full flex-shrink-0" style={{ height: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}></div>
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="lg:hidden absolute bottom-0 left-0 right-0 h-[64px] bg-white dark:bg-[#122131] border-t border-slate-200 dark:border-transparent flex items-center justify-around px-2 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.02)] dark:shadow-none">
+      <div className="lg:hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-[#122131] border-t border-slate-200 dark:border-transparent flex items-center justify-around px-2 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.02)] dark:shadow-none" style={{ height: 'calc(64px + env(safe-area-inset-bottom, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {navItems.map((item) => {
           const isActive = activeTab === item.id && item.id !== 'theme' && item.id !== 'logout';
           return (

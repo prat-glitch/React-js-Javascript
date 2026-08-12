@@ -96,7 +96,7 @@ const Login = () => {
       >
         {/* ── Brand name ── */}
         <p className="text-center font-semibold mb-1 text-blue-600 dark:text-emerald-400 text-[15px] tracking-[-0.01em]">
-          ChitChat
+          Samlap
         </p>
 
         {/* ── Heading ── */}
