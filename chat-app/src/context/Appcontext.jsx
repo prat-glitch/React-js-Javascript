@@ -3,7 +3,7 @@ import { auth } from "../config/firebase";
 import { setSupabaseToken, getSupabase } from "../config/supabase";
 import { useNavigate, useLocation } from "react-router-dom";
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from "../lib/pushNotifications";
-import { getOrCreateKeyPair } from "../lib/crypto";
+import { getOrCreateKeyPair, exportPrivateKey } from "../lib/crypto";
 
 export const Appcontext = createContext();
 
@@ -74,18 +74,25 @@ const Appcontextprovider = (props) => {
           // Only run the one-time setup on first sign-in, not on every token refresh
           if (!initializedRef.current) {
             initializedRef.current = true;
-            await loaduserdata(firebaseUser.uid);
-            setupPresence(firebaseUser.uid);
-
-            // ── E2EE: generate or retrieve this user's ECDH key pair ──────────
-            // getOrCreateKeyPair is idempotent — safe to call on every login.
+            // ── E2EE: generate, retrieve or restore this user's ECDH key pair ──
             try {
-              const publicKeyJson = await getOrCreateKeyPair(firebaseUser.uid);
-              // Upsert the public key so conversation partners can encrypt to us.
-              await getSupabase()
-                .from('users')
-                .update({ public_key: publicKeyJson })
-                .eq('uid', firebaseUser.uid);
+              const profileData = await loaduserdata(firebaseUser.uid);
+              setupPresence(firebaseUser.uid);
+
+              const cloudPrivateKey = profileData?.private_key ?? null;
+              const publicKeyJson = await getOrCreateKeyPair(firebaseUser.uid, cloudPrivateKey);
+              
+              // If cloud backup doesn't exist yet, save the new keys to Supabase
+              if (!profileData?.private_key || !profileData?.public_key) {
+                const privateKeyJwk = await exportPrivateKey(firebaseUser.uid);
+                await getSupabase()
+                  .from('users')
+                  .update({ 
+                    public_key: publicKeyJson,
+                    private_key: privateKeyJwk ? JSON.stringify(privateKeyJwk) : null
+                  })
+                  .eq('uid', firebaseUser.uid);
+              }
               setE2eeReady(true);
             } catch (cryptoErr) {
               console.warn('E2EE key init failed (Web Crypto not available?):', cryptoErr);
@@ -174,8 +181,10 @@ const Appcontextprovider = (props) => {
             lastseen: new Date().toLocaleString()
         }).eq('uid', uid);
       }
+      return finalData;
     } catch (err) {
       console.error("Error loading user data:", err);
+      return null;
     }
   };
 
@@ -242,34 +251,35 @@ const Appcontextprovider = (props) => {
   }, [allUsers, onlineUsers]);
 
   // ---------- Realtime: my chat list ----------
+  const fetchChats = useCallback(async (uid) => {
+    if (!uid) return;
+    const { data } = await getSupabase()
+      .from('user_chats')
+      .select('*')
+      .eq('owner_id', uid)
+      .order('updated_at', { ascending: false });
+      
+    if (data) {
+      setUserChats(data);
+      
+      const newUnread = {};
+      data.forEach(chat => {
+        if (chat.unread > 0 && chat.recipient_id !== selectedChatUser?.uid) {
+          newUnread[chat.recipient_id] = chat.unread;
+        }
+      });
+      setUnreadChats(newUnread);
+
+      // Re-fetch scoped contacts so newly started conversations
+      // (e.g., via AddContactModal) appear immediately in allUsers.
+      fetchChatContacts(uid);
+    }
+  }, [selectedChatUser?.uid, fetchChatContacts]);
+
   useEffect(() => {
     if (!userdata?.uid) return;
 
-    const fetchChats = async () => {
-      const { data } = await getSupabase()
-        .from('user_chats')
-        .select('*')
-        .eq('owner_id', userdata.uid)
-        .order('updated_at', { ascending: false });
-        
-      if (data) {
-        setUserChats(data);
-        
-        const newUnread = {};
-        data.forEach(chat => {
-          if (chat.unread > 0 && chat.recipient_id !== selectedChatUser?.uid) {
-            newUnread[chat.recipient_id] = chat.unread;
-          }
-        });
-        setUnreadChats(newUnread);
-
-        // Re-fetch scoped contacts so newly started conversations
-        // (e.g., via AddContactModal) appear immediately in allUsers.
-        fetchChatContacts(userdata.uid);
-      }
-    };
-
-    fetchChats();
+    fetchChats(userdata.uid);
 
     const channel = getSupabase()
       .channel('user_chats_changes')
@@ -279,12 +289,31 @@ const Appcontextprovider = (props) => {
         table: 'user_chats', 
         filter: `owner_id=eq.${userdata.uid}` 
       }, () => {
-        fetchChats();
+        fetchChats(userdata.uid);
       })
       .subscribe();
 
-    return () => channel.unsubscribe();
-  }, [userdata?.uid, selectedChatUser?.uid, fetchChatContacts]);
+    // Listen for new messages globally in AppContext to trigger recent chats / contacts refresh.
+    // This provides a fallback trigger in case the user_chats publication is missing/delayed.
+    const messagesChannel = getSupabase()
+      .channel('global_messages_changes')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'messages' 
+      }, (payload) => {
+        const msg = payload.new;
+        if (msg && msg.chat_id && msg.chat_id.includes(userdata.uid)) {
+          fetchChats(userdata.uid);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+      messagesChannel.unsubscribe();
+    };
+  }, [userdata?.uid, fetchChats]);
 
   // Clear unread when selecting a chat
   const markChatAsRead = async (recipientId) => {

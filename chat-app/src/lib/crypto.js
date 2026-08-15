@@ -55,13 +55,14 @@ function idbPut(db, key, value) {
 
 /**
  * Returns this user's ECDH public key as a JWK JSON string.
- * If no key pair exists in IndexedDB for `uid`, one is generated and stored.
- * The private key is stored as a NON-EXTRACTABLE CryptoKey.
+ * If no key pair exists in IndexedDB for `uid`, it restores it from `backupPrivateKeyJwk`
+ * if provided, or generates a new one.
  *
- * @param {string} uid   Firebase UID of the current user
- * @returns {Promise<string>}  JSON-stringified JWK of the public key
+ * @param {string} uid                   Firebase UID of the current user
+ * @param {string|object} [backupKeyJwk] Optional backup private key (JWK) from DB
+ * @returns {Promise<string>}            JSON-stringified JWK of the public key
  */
-export async function getOrCreateKeyPair(uid) {
+export async function getOrCreateKeyPair(uid, backupKeyJwk = null) {
   const db     = await openDB();
   const stored = await idbGet(db, uid);
 
@@ -69,21 +70,58 @@ export async function getOrCreateKeyPair(uid) {
     return JSON.stringify(stored.publicKeyJwk);
   }
 
-  // Generate a new ECDH P-256 key pair
+  // If a backup private key exists in the database, restore it
+  if (backupKeyJwk) {
+    try {
+      const privateJwk = typeof backupKeyJwk === 'string' ? JSON.parse(backupKeyJwk) : backupKeyJwk;
+      
+      // Import the private key CryptoKey
+      const privateKey = await crypto.subtle.importKey(
+        'jwk',
+        privateJwk,
+        { name: 'ECDH', namedCurve: 'P-256' },
+        true,
+        ['deriveKey']
+      );
+
+      // Reconstruct the public key JWK from the private key components (d, x, y)
+      const { d, ...publicJwk } = privateJwk;
+      publicJwk.key_ops = [];
+
+      await idbPut(db, uid, {
+        privateKey,
+        publicKeyJwk: publicJwk,
+      });
+
+      return JSON.stringify(publicJwk);
+    } catch (err) {
+      console.error('[E2EE] Failed to restore backup private key:', err);
+    }
+  }
+
+  // Generate a new ECDH P-256 key pair (extractable = true for backup support)
   const keyPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
-    false,           // ← private key is NON-EXTRACTABLE
+    true,           // ← Set extractable to true to allow cloud backup
     ['deriveKey'],
   );
 
   const publicKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
 
   await idbPut(db, uid, {
-    privateKey:   keyPair.privateKey,  // CryptoKey — never leaves IDB
-    publicKeyJwk,                      // JWK object — safe to share
+    privateKey:   keyPair.privateKey,  // CryptoKey
+    publicKeyJwk,                      // JWK object
   });
 
   return JSON.stringify(publicKeyJwk);
+}
+
+/** Exports the current user's private key as a JWK object for backup. */
+export async function exportPrivateKey(uid) {
+  const db = await openDB();
+  const stored = await idbGet(db, uid);
+  if (!stored?.privateKey) return null;
+  return crypto.subtle.exportKey('jwk', stored.privateKey);
 }
 
 async function getPrivateKey(uid) {
@@ -179,11 +217,20 @@ export async function decryptMessage(ciphertext, iv, otherPublicKeyJwk, myUid) {
 
 /**
  * Tries to parse a message's `text` field as an E2EE payload.
- * @param {string} text
+ * Handles both JSON string formats and pre-parsed objects (e.g. from JSON/JSONB column types).
+ * @param {string|object} text
  * @returns {{ ciphertext: string, iv: string } | null}
  */
 export function parseEncryptedPayload(text) {
   if (!text) return null;
+  
+  if (typeof text === 'object') {
+    if (typeof text.ciphertext === 'string' && typeof text.iv === 'string') {
+      return text;
+    }
+    return null;
+  }
+
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed.ciphertext === 'string' && typeof parsed.iv === 'string') {

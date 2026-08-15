@@ -32,7 +32,7 @@ const Sidebar = ({ setMobileView }) => {
 
   const { canInstall, promptInstall } = usePWAInstall()
 
-  const handleSelectUser = (user) => {
+  const handleSelectUser = async (user) => {
     setSelectedChatUser(user)
     setSearchQuery("")
     setShowSearch(false)
@@ -40,6 +40,21 @@ const Sidebar = ({ setMobileView }) => {
       markChatAsRead(user.uid)
     }
     if (setMobileView) setMobileView("chat")
+
+    // Client-side upsert to register this chat thread immediately for the sender
+    if (userdata?.uid && user?.uid) {
+      try {
+        await getSupabase().from('user_chats').upsert({
+          owner_id: userdata.uid,
+          recipient_id: user.uid,
+          last_msg: '',
+          updated_at: Date.now(),
+          unread: 0
+        });
+      } catch (err) {
+        console.warn('[Realtime Sync] Failed client-side user_chats upsert:', err);
+      }
+    }
   }
 
   const handleLogout = async () => {

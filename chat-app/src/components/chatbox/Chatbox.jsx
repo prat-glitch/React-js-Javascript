@@ -36,6 +36,13 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
   }, [decryptedTexts])
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  
+  // ── Audio recording states ───────────────────────────────────────────────
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
+  const recordingIntervalRef = useRef(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -130,6 +137,135 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
     decryptedTextsRef.current = empty
     setDecryptedTexts(empty)
   }, [selectedChatUser?.uid])
+
+  // ── Voice message helpers ──────────────────────────────────────────────────
+  
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const startRecording = async () => {
+    try {
+      if (typeof MediaRecorder === 'undefined') {
+        throw new Error('Audio recording is not supported in this browser context (MediaRecorder undefined).');
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Microphone access is disabled or not supported in this browser context. Note: browsers require HTTPS or localhost for audio access.');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      } catch (e) {
+        try {
+          recorder = new MediaRecorder(stream, { mimeType: 'audio/mp4' });
+        } catch (e2) {
+          try {
+            recorder = new MediaRecorder(stream, { mimeType: 'audio/ogg' });
+          } catch (e3) {
+            recorder = new MediaRecorder(stream);
+          }
+        }
+      }
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        
+        if (recordingIntervalRef.current) {
+          clearInterval(recordingIntervalRef.current);
+          recordingIntervalRef.current = null;
+        }
+
+        if (audioChunksRef.current.length > 0) {
+          const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+          if (audioBlob.size > 0) {
+            await sendAudioMessage(audioBlob);
+          }
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start(250);
+
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(t => t + 1);
+      }, 1000);
+
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      toast.error(err.message || 'Could not access microphone');
+    }
+  };
+
+  const stopRecording = (shouldSend) => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+
+    if (!shouldSend) {
+      audioChunksRef.current = [];
+    }
+    
+    mediaRecorderRef.current.stop();
+    setIsRecording(false);
+  };
+
+  const sendAudioMessage = async (audioBlob) => {
+    setSending(true);
+    try {
+      const chatId = currentChatIdRef.current;
+      const filename = `voice_${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
+      const storagepath = `${userdata.uid}/${chatId}/${filename}`;
+
+      const supabase = getSupabase();
+      
+      const { error: uploaderror } = await supabase.storage.from('chat-media').upload(storagepath, audioBlob, {
+        contentType: audioBlob.type || 'audio/webm',
+        cacheControl: '3600'
+      });
+      
+      if (uploaderror) throw uploaderror;
+
+      const { data: signeddata } = await supabase.storage.from('chat-media').createSignedUrl(storagepath, 60 * 60 * 24 * 365);
+
+      const { error } = await supabase.from('messages').insert({
+        chat_id: chatId,
+        sender_id: userdata.uid,
+        text: '',
+        media_url: signeddata.signedUrl,
+        media_type: 'audio',
+        file_name: `Voice Message (${formatTime(recordingTime)})`,
+        file_size: audioBlob.size,
+        created_at: Date.now(),
+        read_by: [userdata.uid]
+      });
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error sending audio message:', err);
+      toast.error('Failed to send voice message');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!userdata?.uid || !selectedChatUser?.uid) return;
@@ -389,18 +525,6 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
             <div className="flex flex-col text-left">
               <div className="flex items-center gap-1.5">
                 <h3 className="text-sm font-semibold leading-tight transition-colors text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-emerald-400">{selectedChatUser.username}</h3>
-                {/* E2EE badge — shown only when both parties have exchanged public keys */}
-                {selectedChatUser?.public_key && (
-                  <span
-                    title="End-to-end encrypted"
-                    className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 select-none"
-                  >
-                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 1C8.676 1 6 3.676 6 7v2H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V11a2 2 0 00-2-2h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v2H8V7c0-2.276 1.724-4 4-4zm0 10a2 2 0 110 4 2 2 0 010-4z"/>
-                    </svg>
-                    E2EE
-                  </span>
-                )}
               </div>
               <div className="text-[11px] font-medium mt-0.5">
                 {typingIndicator ? (
@@ -582,6 +706,25 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
                       </a>
                     )}
 
+                    {/* Audio Voice Message */}
+                    {msg.media_type === 'audio' && (
+                      <div className="flex flex-col gap-1.5 p-1 min-w-[220px] max-w-[280px]">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-8 h-8 flex-shrink-0 text-slate-500 dark:text-slate-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3zm0 16a7 7 0 01-7-7 1 1 0 10-2 0 9 9 0 008 8.94V21h-2a1 1 0 100 2h6a1 1 0 100-2h-2v-2.06A9 9 0 0021 11a1 1 0 10-2 0 7 7 0 01-7 7z"/>
+                          </svg>
+                          <audio
+                            src={msg.media_url}
+                            controls
+                            className="w-full h-8 custom-audio-player"
+                          />
+                        </div>
+                        <span className="text-[11px] opacity-75 font-semibold px-1">
+                          {msg.file_name || 'Voice Message'}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Text + Time Row inside the bubble */}
                     <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-x-4 gap-y-1 mt-1">
                       <span className={`${msg.media_url ? 'block mt-0.5' : 'block'} break-all sm:break-normal`}>
@@ -682,57 +825,92 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
               backgroundColor: theme === 'dark' ? '#2a3942' : '#ffffff',
             }}
           >
-            {/* Smiley icon */}
-            <button
-              type="button"
-              onClick={() => setShowEmojiPicker(v => !v)}
-              className={`w-11 h-11 mb-[1px] rounded-full flex items-center justify-center transition-all focus:outline-none flex-shrink-0 ${showEmojiPicker
-                ? (theme === 'dark' ? 'bg-slate-700 text-emerald-400' : 'bg-slate-100 text-emerald-500')
-                : ('text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60')
-                }`}
-              title="Emoji"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"
-                  d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+            {isRecording ? (
+              <div className="flex-1 flex items-center justify-between px-3 h-10 select-none">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping"></span>
+                  <span className="text-[13px] font-bold text-red-500 uppercase tracking-wide">Recording</span>
+                  <span className="text-sm font-bold ml-2 text-slate-700 dark:text-slate-200">{formatTime(recordingTime)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => stopRecording(false)}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-all"
+                  title="Discard Recording"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Smiley icon */}
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(v => !v)}
+                  className={`w-11 h-11 mb-[1px] rounded-full flex items-center justify-center transition-all focus:outline-none flex-shrink-0 ${showEmojiPicker
+                    ? (theme === 'dark' ? 'bg-slate-700 text-emerald-400' : 'bg-slate-100 text-emerald-500')
+                    : ('text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60')
+                    }`}
+                  title="Emoji"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"
+                      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
 
-            <textarea
-              value={input}
-              onChange={handleTyping}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              disabled={sending}
-              placeholder="Type a message"
-              rows="1"
-              className="flex-1 max-h-[120px] min-h-[40px] py-2.5 px-2 bg-transparent border-none outline-none text-[15px] resize-none overflow-y-auto custom-scrollbar"
-              style={{ 
-                color: theme === 'dark' ? '#e9edef' : '#111b21',
-              }}
-            />
+                <textarea
+                  value={input}
+                  onChange={handleTyping}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  disabled={sending}
+                  placeholder="Type a message"
+                  rows="1"
+                  className="flex-1 max-h-[120px] min-h-[40px] py-2.5 px-2 bg-transparent border-none outline-none text-[15px] resize-none overflow-y-auto custom-scrollbar"
+                  style={{ 
+                    color: theme === 'dark' ? '#e9edef' : '#111b21',
+                  }}
+                />
+              </>
+            )}
           </div>
 
           {/* Send / Mic Button (Outside Pill) */}
-          <button
-            onClick={sendMessage}
-            disabled={sending || !input.trim()}
-            className="w-11 h-11 mb-[5px] rounded-full flex items-center justify-center transition-all disabled:opacity-50 flex-shrink-0 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 active:bg-slate-300 dark:active:bg-slate-600"
-          >
-            {input.trim() ? (
-              <svg className={`w-[20px] h-[20px] ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-500'}`} fill="currentColor" viewBox="0 0 24 24">
+          {isRecording ? (
+            <button
+              onClick={() => stopRecording(true)}
+              className="w-11 h-11 mb-[5px] rounded-full flex items-center justify-center transition-all bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white shadow-sm flex-shrink-0"
+              title="Send Voice Message"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
               </svg>
-            ) : (
-              <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            )}
-          </button>
+            </button>
+          ) : (
+            <button
+              onClick={input.trim() ? sendMessage : startRecording}
+              disabled={sending}
+              className="w-11 h-11 mb-[5px] rounded-full flex items-center justify-center transition-all flex-shrink-0 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 active:bg-slate-300 dark:active:bg-slate-600"
+              title={input.trim() ? "Send Message" : "Record Audio Message"}
+            >
+              {input.trim() ? (
+                <svg className={`w-[20px] h-[20px] ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-500'}`} fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+              ) : (
+                <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              )}
+            </button>
+          )}
 
         </div>
       </div>
