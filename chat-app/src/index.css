@@ -236,12 +236,23 @@ body {
   input, textarea, select {
     font-size: 16px !important;
   }
+
+  /* Enforce minimum 48px tap targets on all interactive icon buttons on mobile */
+  button:not([data-no-touch]) {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* Bottom safe-area on message input */
+  .chat-input-area {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
 }
 
-/* Touch-friendly tap targets */
+/* Touch-friendly tap targets — minimum 48×48px (WCAG 2.5.8 / Google spec) */
 .touch-target {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 48px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;

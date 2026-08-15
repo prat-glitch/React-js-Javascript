@@ -1,8 +1,9 @@
-import { createContext, useEffect, useMemo, useState, useRef } from "react";
+import { createContext, useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { auth } from "../config/firebase";
 import { setSupabaseToken, getSupabase } from "../config/supabase";
 import { useNavigate, useLocation } from "react-router-dom";
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from "../lib/pushNotifications";
+import { getOrCreateKeyPair } from "../lib/crypto";
 
 export const Appcontext = createContext();
 
@@ -18,11 +19,12 @@ const Appcontextprovider = (props) => {
   const [user, setUser] = useState(null);
   const [userdata, setuserdata] = useState(null);
   const [userChats, setUserChats] = useState([]); // recent chats list
-  const [allUsers, setAllUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);    // scoped: only active chat partners
   const [selectedChatUser, setSelectedChatUser] = useState(null);
   const [unreadChats, setUnreadChats] = useState({}); // {recipientId: count}
   const [onlineUsers, setOnlineUsers] = useState(new Set());
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  const [e2eeReady, setE2eeReady] = useState(false); // true once key pair is initialised
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -74,6 +76,20 @@ const Appcontextprovider = (props) => {
             initializedRef.current = true;
             await loaduserdata(firebaseUser.uid);
             setupPresence(firebaseUser.uid);
+
+            // ── E2EE: generate or retrieve this user's ECDH key pair ──────────
+            // getOrCreateKeyPair is idempotent — safe to call on every login.
+            try {
+              const publicKeyJson = await getOrCreateKeyPair(firebaseUser.uid);
+              // Upsert the public key so conversation partners can encrypt to us.
+              await getSupabase()
+                .from('users')
+                .update({ public_key: publicKeyJson })
+                .eq('uid', firebaseUser.uid);
+              setE2eeReady(true);
+            } catch (cryptoErr) {
+              console.warn('E2EE key init failed (Web Crypto not available?):', cryptoErr);
+            }
           }
 
           // Register push notifications
@@ -188,25 +204,30 @@ const Appcontextprovider = (props) => {
     presenceChannelRef.current = channel;
   };
 
-  // ---------- Realtime: all users ----------
+  // ---------- Realtime: scoped chat contacts (via RPC) ----------
+  // Only fetches users who share an active user_chats row with the current user.
+  // This replaces the previous global `users.select('*')` for privacy.
+  const fetchChatContacts = useCallback(async (uid) => {
+    if (!uid) return;
+    const { data, error } = await getSupabase().rpc('get_chat_contacts', { p_uid: uid });
+    if (!error && data) setAllUsers(data);
+  }, []);
+
   useEffect(() => {
     if (!userdata?.uid) return;
 
-    const fetchUsers = async () => {
-      const { data } = await getSupabase().from('users').select('*');
-      if (data) setAllUsers(data);
-    };
-    fetchUsers();
+    fetchChatContacts(userdata.uid);
 
-    const channel = getSupabase()
+    // Listen for changes on the users table (e.g., avatar updates, public_key upserts)
+    const usersChannel = getSupabase()
       .channel('users_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, (payload) => {
-        fetchUsers();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        fetchChatContacts(userdata.uid);
       })
       .subscribe();
 
-    return () => channel.unsubscribe();
-  }, [userdata?.uid]);
+    return () => usersChannel.unsubscribe();
+  }, [userdata?.uid, fetchChatContacts]);
 
   // Keep selectedChatUser in sync with latest data + presence
   useEffect(() => {
@@ -241,6 +262,10 @@ const Appcontextprovider = (props) => {
           }
         });
         setUnreadChats(newUnread);
+
+        // Re-fetch scoped contacts so newly started conversations
+        // (e.g., via AddContactModal) appear immediately in allUsers.
+        fetchChatContacts(userdata.uid);
       }
     };
 
@@ -259,7 +284,7 @@ const Appcontextprovider = (props) => {
       .subscribe();
 
     return () => channel.unsubscribe();
-  }, [userdata?.uid, selectedChatUser?.uid]);
+  }, [userdata?.uid, selectedChatUser?.uid, fetchChatContacts]);
 
   // Clear unread when selecting a chat
   const markChatAsRead = async (recipientId) => {
@@ -302,7 +327,8 @@ const Appcontextprovider = (props) => {
     markChatAsRead,
     theme,
     setTheme,
-  }), [user, userdata, enrichedAllUsers, userChats, selectedChatUser, unreadChats, theme]);
+    e2eeReady,         // true once the ECDH key pair has been initialised
+  }), [user, userdata, enrichedAllUsers, userChats, selectedChatUser, unreadChats, theme, e2eeReady]);
 
   return (
     <Appcontext.Provider value={value}>

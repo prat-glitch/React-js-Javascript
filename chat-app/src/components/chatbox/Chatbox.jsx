@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react'
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react'
 import EmojiPicker from 'emoji-picker-react'
 import assets from '../../assets/assets'
 import { Appcontext } from '../../context/Appcontext'
@@ -6,6 +6,7 @@ import { getSupabase } from '../../config/supabase'
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router-dom'
 import Audiocallbar from '../calls/Audiocallbar'
+import { encryptMessage, decryptMessage, parseEncryptedPayload } from '../../lib/crypto'
 
 const Chatbox = ({ setMobileView, setShowContactInfo }) => {
   const { userdata, selectedChatUser, getChatId, theme } = useContext(Appcontext)
@@ -15,6 +16,11 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [typingIndicator, setTypingIndicator] = useState(false)
+  // Map of msgId → decrypted plaintext string (null = decryption failed)
+  const [decryptedTexts, setDecryptedTexts] = useState(new Map())
+  // Ref mirrors decryptedTexts so useCallback closures always see the latest Map
+  // without needing decryptedTexts in the dependency array (avoids infinite loops).
+  const decryptedTextsRef = useRef(new Map())
 
   const messagesEndRef = useRef(null)
   const currentChatIdRef = useRef(null)
@@ -23,6 +29,11 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
   const channelRef = useRef(null)
   const fileinputref = useRef(null)
   const emojiPickerRef = useRef(null)
+
+  // Keep the ref in sync whenever the state updates
+  useEffect(() => {
+    decryptedTextsRef.current = decryptedTexts
+  }, [decryptedTexts])
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
@@ -47,6 +58,78 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
   const handleEmojiClick = (emojiObject) => {
     setInput(prev => prev + emojiObject.emoji)
   }
+
+  // ── E2EE: decrypt messages asynchronously ─────────────────────────────────
+  //
+  // ECDH symmetry: A.private + B.public == B.private + A.public (same shared key)
+  // so we always use MY private key + the OTHER party's public key,
+  // regardless of who sent the message.
+  //
+  // Two bugs fixed here vs v1:
+  //  1. Stale-closure: we read from decryptedTextsRef (always current) instead of
+  //     the captured decryptedTexts state value.
+  //  2. Race-condition: selectedChatUser.public_key may be null on first render
+  //     because allUsers is fetched before the key upsert completes.
+  //     We fall back to a direct DB fetch.
+  const decryptAll = useCallback(async () => {
+    if (!selectedChatUser?.uid || !userdata?.uid) return
+
+    // ── Resolve other party's public key ─────────────────────────────
+    // Try cached value first; fall back to a fresh Supabase read if null.
+    // This handles the window between login and public-key upsert propagating.
+    let otherPublicKey = selectedChatUser?.public_key ?? null
+    if (!otherPublicKey) {
+      const { data } = await getSupabase()
+        .from('users')
+        .select('public_key')
+        .eq('uid', selectedChatUser.uid)
+        .maybeSingle()
+      otherPublicKey = data?.public_key ?? null
+    }
+    if (!otherPublicKey) return // other party hasn't registered E2EE yet
+
+    // ── Use ref to avoid stale Map from closure ────────────────────────
+    const updated = new Map(decryptedTextsRef.current)
+    let changed = false
+
+    for (const msg of messages) {
+      if (updated.has(msg.id)) continue // already processed
+
+      const payload = parseEncryptedPayload(msg.text)
+      if (!payload) continue // plain text (old message) — nothing to do
+
+      try {
+        const plaintext = await decryptMessage(
+          payload.ciphertext,
+          payload.iv,
+          otherPublicKey,
+          userdata.uid,
+        )
+        updated.set(msg.id, plaintext)
+      } catch (err) {
+        console.error('[E2EE] Decryption failed for msg', msg.id, err)
+        updated.set(msg.id, null) // null → show fallback text
+      }
+      changed = true
+    }
+
+    if (changed) {
+      decryptedTextsRef.current = updated
+      setDecryptedTexts(new Map(updated))
+    }
+  }, [messages, selectedChatUser?.uid, selectedChatUser?.public_key, userdata?.uid])
+  // NOTE: decryptedTexts intentionally omitted — we use decryptedTextsRef instead.
+
+  useEffect(() => {
+    decryptAll()
+  }, [decryptAll])
+
+  // Reset decrypted cache when switching conversations
+  useEffect(() => {
+    const empty = new Map()
+    decryptedTextsRef.current = empty
+    setDecryptedTexts(empty)
+  }, [selectedChatUser?.uid])
 
   useEffect(() => {
     if (!userdata?.uid || !selectedChatUser?.uid) return;
@@ -174,10 +257,31 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
     try {
       const chatId = currentChatIdRef.current;
 
+      // ── E2EE: resolve recipient's public key (with fresh-fetch fallback) ──────
+      let recipientPublicKey = selectedChatUser?.public_key ?? null
+      if (!recipientPublicKey) {
+        const { data } = await getSupabase()
+          .from('users')
+          .select('public_key')
+          .eq('uid', selectedChatUser.uid)
+          .maybeSingle()
+        recipientPublicKey = data?.public_key ?? null
+      }
+
+      let storedText = text
+      if (recipientPublicKey) {
+        try {
+          const payload = await encryptMessage(text, recipientPublicKey, userdata.uid)
+          storedText = JSON.stringify(payload)
+        } catch (cryptoErr) {
+          console.warn('[E2EE] Encryption failed, sending plaintext:', cryptoErr)
+        }
+      }
+
       const { error } = await getSupabase().from('messages').insert({
         chat_id: chatId,
         sender_id: userdata.uid,
-        text: text,
+        text: storedText,
         created_at: Date.now(),
         read_by: [userdata.uid]
       });
@@ -265,9 +369,11 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
       {/* ── HEADER ── */}
       <div className="h-[60px] px-4 border-b flex items-center justify-between flex-shrink-0 z-10 relative bg-[#ededed] dark:bg-[#202c33] border-slate-300/40 dark:border-white/5">
         <div className="flex items-center gap-3">
+          {/* Back button — mobile only */}
           <button
             onClick={() => setMobileView('sidebar')}
-            className="md:hidden w-11 h-11 rounded-full flex items-center justify-center transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600"
+            className="md:hidden min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600"
+            aria-label="Back to chats"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
           </button>
@@ -281,7 +387,21 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
               {isOnline && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#ededed] dark:border-[#202c33]"></span>}
             </div>
             <div className="flex flex-col text-left">
-              <h3 className="text-sm font-semibold leading-tight transition-colors text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-emerald-400">{selectedChatUser.username}</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold leading-tight transition-colors text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-emerald-400">{selectedChatUser.username}</h3>
+                {/* E2EE badge — shown only when both parties have exchanged public keys */}
+                {selectedChatUser?.public_key && (
+                  <span
+                    title="End-to-end encrypted"
+                    className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 select-none"
+                  >
+                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 1C8.676 1 6 3.676 6 7v2H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V11a2 2 0 00-2-2h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v2H8V7c0-2.276 1.724-4 4-4zm0 10a2 2 0 110 4 2 2 0 010-4z"/>
+                    </svg>
+                    E2EE
+                  </span>
+                )}
+              </div>
               <div className="text-[11px] font-medium mt-0.5">
                 {typingIndicator ? (
                   <span className="text-blue-600 dark:text-emerald-400">typing...</span>
@@ -396,15 +516,32 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
           const isOwn = msg.sender_id === userdata.uid;
           const timeString = new Date(Number(msg.created_at)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-          // Bubble Colors: WhatsApp theme colors but in high contrast deep text styles
           const bubbleBg = isOwn
             ? (theme === 'dark' ? '#005c4b' : '#97ee88ff')
             : (theme === 'dark' ? '#202c33' : '#ffffff');
           const bubbleTextColor = theme === 'dark' ? '#e9edef' : '#111b21';
 
+          // ── Resolve display text with E2EE decryption ──────────────────────
+          // parseEncryptedPayload returns {ciphertext,iv} if JSON, else null.
+          const encPayload = parseEncryptedPayload(msg.text)
+          let displayText = msg.text // default: render as-is (plaintext / old message)
+          let isEncrypted = false
+          let decryptPending = false
+
+          if (encPayload) {
+            isEncrypted = true
+            if (decryptedTexts.has(msg.id)) {
+              const dec = decryptedTexts.get(msg.id)
+              displayText = dec !== null ? dec : '[Encrypted message — cannot decrypt]'
+            } else {
+              decryptPending = true
+              displayText = ''
+            }
+          }
+
           return (
             <div key={msg.id || i} className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} w-full mb-0.5 px-2 md:px-6`}>
-              <div className={`flex max-w-[85%] md:max-w-[70%] ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end gap-1.5`}>
+              <div className={`flex max-w-[92%] md:max-w-[70%] ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end gap-1.5`}>
 
                 <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-full`}>
                   <div
@@ -413,7 +550,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
                       backgroundColor: bubbleBg,
                       color: bubbleTextColor
                     }}
-                    className="relative text-[14.2px] leading-relaxed break-words whitespace-pre-wrap rounded-lg shadow-sm border border-slate-200/40 dark:border-transparent"
+                    className="relative text-[14.2px] leading-relaxed break-words whitespace-pre-wrap rounded-lg shadow-sm border border-slate-200/40 dark:border-transparent w-full"
                   >
                     {/* Image */}
                     {msg.media_type === 'image' && (
@@ -446,14 +583,17 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
                     )}
 
                     {/* Text + Time Row inside the bubble */}
-                    <div className="flex items-end justify-between gap-4 mt-1">
-                      {msg.text && (
-                        <span className={msg.media_url ? 'block mt-0.5' : 'block'}>
-                          {msg.text}
-                        </span>
-                      )}
+                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-x-4 gap-y-1 mt-1">
+                      <span className={`${msg.media_url ? 'block mt-0.5' : 'block'} break-all sm:break-normal`}>
+                        {decryptPending ? (
+                          // Skeleton shimmer while decryption runs
+                          <span className="inline-block w-24 h-3.5 rounded bg-current opacity-20 animate-pulse" />
+                        ) : (
+                          displayText
+                        )}
+                      </span>
 
-                      <div className="flex items-center gap-1 flex-shrink-0" style={{ transform: 'translateY(4px)' }}>
+                      <div className="flex items-center gap-1 flex-shrink-0 self-end sm:self-auto" style={{ transform: 'translateY(2px)' }}>
                         <span className="text-[10px] select-none text-[#667781] dark:text-[#8696a0] font-medium">{timeString}</span>
                         {isOwn && (
                           <svg

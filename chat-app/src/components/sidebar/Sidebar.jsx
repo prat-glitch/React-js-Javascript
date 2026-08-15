@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState, useEffect } from "react"
+import React, { useContext, useMemo, useState } from "react"
 import assets from "../../assets/assets"
 import { Appcontext } from "../../context/Appcontext"
 import { logout } from "../../config/firebase"
@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import NavigationMenu from "./NavigationMenu"
 import ContactsList from "./ContactsList"
 import UserCard from "./UserCard"
+import { usePWAInstall } from "../../lib/usePWAInstall"
 
 const Sidebar = ({ setMobileView }) => {
   const navigate = useNavigate()
@@ -29,17 +30,7 @@ const Sidebar = ({ setMobileView }) => {
     return Object.values(unreadChats || {}).reduce((a, b) => a + b, 0);
   }, [unreadChats])
 
-  const handleInstallClick = async () => {
-    if (window.deferredPrompt) {
-      window.deferredPrompt.prompt()
-      const { outcome } = await window.deferredPrompt.userChoice
-      if (outcome === 'accepted') {
-        window.deferredPrompt = null
-      }
-    } else {
-      alert("To install Samlap:\n\n💻 On PC: Click the install icon (a screen with an arrow) in the far right of your browser's address bar.\n\n📱 On Mobile: Tap your browser's menu (⋮) or Share button and select 'Add to Home Screen'.")
-    }
-  }
+  const { canInstall, promptInstall } = usePWAInstall()
 
   const handleSelectUser = (user) => {
     setSelectedChatUser(user)
@@ -56,6 +47,7 @@ const Sidebar = ({ setMobileView }) => {
     navigate("/")
   }
 
+  // Only show Install button when the browser has offered a prompt and app isn't already installed
   const navItems = [
     {
       id: "messages",
@@ -78,12 +70,13 @@ const Sidebar = ({ setMobileView }) => {
       label: "Settings",
       icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756-2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
     },
-    {
+    // Install button: only rendered when the browser deferred-prompt is available
+    ...(canInstall ? [{
       id: "install",
       label: "Install",
       icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4",
-      onClick: handleInstallClick,
-    },
+      onClick: promptInstall,
+    }] : []),
     {
       id: "logout",
       label: "Logout",

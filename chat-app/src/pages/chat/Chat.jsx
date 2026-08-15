@@ -22,6 +22,15 @@ const Chat = () => {
     }
   }, [location, navigate]);
 
+  // On mobile viewports, always start on the sidebar (chat list) regardless
+  // of any previously selected chat user (e.g., after a PWA launch / page refresh).
+  useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobile) {
+      setMobileView('sidebar');
+    }
+  }, []); // runs only once on mount
+
   useEffect(() => {
     if (toastmessage) {
       const timer = setTimeout(() => setToastmessage(''), 3000);
