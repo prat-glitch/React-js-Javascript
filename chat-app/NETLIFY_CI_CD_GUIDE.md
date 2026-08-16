@@ -123,13 +123,18 @@ name: Deploy to Netlify
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    
+    # This tells GitHub to run all steps inside the chat-app folder
+    defaults:
+      run:
+        working-directory: ./chat-app
 
     steps:
       - name: Checkout repository
@@ -140,6 +145,8 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+          # Tells npm cache to look inside the subfolder
+          cache-dependency-path: chat-app/package-lock.json
 
       - name: Install dependencies
         run: npm ci
