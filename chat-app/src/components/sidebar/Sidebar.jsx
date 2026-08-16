@@ -7,6 +7,7 @@ import NavigationMenu from "./NavigationMenu"
 import ContactsList from "./ContactsList"
 import UserCard from "./UserCard"
 import { usePWAInstall } from "../../lib/usePWAInstall"
+import { getSupabase } from "../../config/supabase"
 
 const Sidebar = ({ setMobileView }) => {
   const navigate = useNavigate()
