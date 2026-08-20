@@ -21,6 +21,10 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
   // Ref mirrors decryptedTexts so useCallback closures always see the latest Map
   // without needing decryptedTexts in the dependency array (avoids infinite loops).
   const decryptedTextsRef = useRef(new Map())
+  // Track per-message decryption failure counts so we can retry (up to MAX_DECRYPT_RETRIES)
+  const decryptRetryCountRef = useRef(new Map())
+  const decryptRetryTimerRef = useRef(null)
+  const MAX_DECRYPT_RETRIES = 3
 
   const messagesEndRef = useRef(null)
   const currentChatIdRef = useRef(null)
@@ -29,6 +33,28 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
   const channelRef = useRef(null)
   const fileinputref = useRef(null)
   const emojiPickerRef = useRef(null)
+
+  // ── Date separator helper ─────────────────────────────────────────────────
+  const getDateLabel = useCallback((timestamp) => {
+    const msgDate = new Date(Number(timestamp))
+    const today = new Date()
+    const yesterday = new Date()
+    yesterday.setDate(today.getDate() - 1)
+
+    const isSameDay = (d1, d2) =>
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+
+    if (isSameDay(msgDate, today)) return 'Today'
+    if (isSameDay(msgDate, yesterday)) return 'Yesterday'
+
+    return msgDate.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+  }, [])
 
   // Keep the ref in sync whenever the state updates
   useEffect(() => {
@@ -72,18 +98,15 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
   // so we always use MY private key + the OTHER party's public key,
   // regardless of who sent the message.
   //
-  // Two bugs fixed here vs v1:
-  //  1. Stale-closure: we read from decryptedTextsRef (always current) instead of
-  //     the captured decryptedTexts state value.
-  //  2. Race-condition: selectedChatUser.public_key may be null on first render
-  //     because allUsers is fetched before the key upsert completes.
-  //     We fall back to a direct DB fetch.
+  // Retry logic: failed decryptions are NOT permanently cached as null.
+  // Instead we track per-message failure counts and retry up to MAX_DECRYPT_RETRIES
+  // times with a 2-second delay between attempts. This handles the race condition
+  // where the other party's public key hasn't propagated yet.
   const decryptAll = useCallback(async () => {
     if (!selectedChatUser?.uid || !userdata?.uid) return
 
     // ── Resolve other party's public key ─────────────────────────────
     // Try cached value first; fall back to a fresh Supabase read if null.
-    // This handles the window between login and public-key upsert propagating.
     let otherPublicKey = selectedChatUser?.public_key ?? null
     if (!otherPublicKey) {
       const { data } = await getSupabase()
@@ -97,10 +120,16 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
 
     // ── Use ref to avoid stale Map from closure ────────────────────────
     const updated = new Map(decryptedTextsRef.current)
+    const retryCounts = decryptRetryCountRef.current
     let changed = false
+    let hasRetryable = false
 
     for (const msg of messages) {
-      if (updated.has(msg.id)) continue // already processed
+      // Skip already-successfully-decrypted messages
+      if (updated.has(msg.id) && updated.get(msg.id) !== null) continue
+      // Skip permanently-failed messages (exhausted retries)
+      const attempts = retryCounts.get(msg.id) || 0
+      if (updated.has(msg.id) && updated.get(msg.id) === null && attempts >= MAX_DECRYPT_RETRIES) continue
 
       const payload = parseEncryptedPayload(msg.text)
       if (!payload) continue // plain text (old message) — nothing to do
@@ -113,9 +142,18 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
           userdata.uid,
         )
         updated.set(msg.id, plaintext)
+        retryCounts.delete(msg.id) // clear retry count on success
       } catch (err) {
-        console.error('[E2EE] Decryption failed for msg', msg.id, err)
-        updated.set(msg.id, null) // null → show fallback text
+        const newCount = attempts + 1
+        retryCounts.set(msg.id, newCount)
+        if (newCount >= MAX_DECRYPT_RETRIES) {
+          console.error(`[E2EE] Decryption permanently failed for msg ${msg.id} after ${newCount} attempts`, err)
+          updated.set(msg.id, null) // null → show fallback text
+        } else {
+          console.warn(`[E2EE] Decryption attempt ${newCount}/${MAX_DECRYPT_RETRIES} failed for msg ${msg.id}, will retry...`)
+          hasRetryable = true
+          // Don't set in map yet — leave it un-cached so it shows as "pending"
+        }
       }
       changed = true
     }
@@ -124,18 +162,34 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
       decryptedTextsRef.current = updated
       setDecryptedTexts(new Map(updated))
     }
+
+    // Schedule a retry for messages that failed but haven't exhausted retries
+    if (hasRetryable) {
+      if (decryptRetryTimerRef.current) clearTimeout(decryptRetryTimerRef.current)
+      decryptRetryTimerRef.current = setTimeout(() => {
+        decryptAll()
+      }, 2000)
+    }
   }, [messages, selectedChatUser?.uid, selectedChatUser?.public_key, userdata?.uid])
   // NOTE: decryptedTexts intentionally omitted — we use decryptedTextsRef instead.
 
   useEffect(() => {
     decryptAll()
+    return () => {
+      if (decryptRetryTimerRef.current) clearTimeout(decryptRetryTimerRef.current)
+    }
   }, [decryptAll])
 
-  // Reset decrypted cache when switching conversations
+  // Reset decrypted cache AND retry counts when switching conversations
   useEffect(() => {
     const empty = new Map()
     decryptedTextsRef.current = empty
     setDecryptedTexts(empty)
+    decryptRetryCountRef.current = new Map()
+    if (decryptRetryTimerRef.current) {
+      clearTimeout(decryptRetryTimerRef.current)
+      decryptRetryTimerRef.current = null
+    }
   }, [selectedChatUser?.uid])
 
   // ── Voice message helpers ──────────────────────────────────────────────────
@@ -630,15 +684,14 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
 
         <div className="flex-1 overflow-y-auto px-4 md:px-12 py-6 flex flex-col gap-2 custom-scrollbar relative z-10">
 
-        <div className="flex justify-center mb-3">
-          <span className="text-[11px] rounded-md px-2.5 py-1 shadow-sm font-medium bg-white dark:bg-[#182229] text-[#54656f] dark:text-[#8696a0] border border-slate-200/50 dark:border-transparent">
-            Today
-          </span>
-        </div>
-
         {messages.map((msg, i) => {
           const isOwn = msg.sender_id === userdata.uid;
           const timeString = new Date(Number(msg.created_at)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+          // ── Date separator: show pill when date changes from previous message ──
+          const currentDateLabel = getDateLabel(msg.created_at)
+          const prevDateLabel = i > 0 ? getDateLabel(messages[i - 1].created_at) : null
+          const showDateSeparator = i === 0 || currentDateLabel !== prevDateLabel
 
           const bubbleBg = isOwn
             ? (theme === 'dark' ? '#005c4b' : '#97ee88ff')
@@ -649,14 +702,17 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
           // parseEncryptedPayload returns {ciphertext,iv} if JSON, else null.
           const encPayload = parseEncryptedPayload(msg.text)
           let displayText = msg.text // default: render as-is (plaintext / old message)
-          let isEncrypted = false
           let decryptPending = false
 
           if (encPayload) {
-            isEncrypted = true
             if (decryptedTexts.has(msg.id)) {
               const dec = decryptedTexts.get(msg.id)
-              displayText = dec !== null ? dec : '[Encrypted message — cannot decrypt]'
+              if (dec !== null) {
+                displayText = dec
+              } else {
+                // Decryption permanently failed — hide this message
+                return null
+              }
             } else {
               decryptPending = true
               displayText = ''
@@ -664,7 +720,15 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
           }
 
           return (
-            <div key={msg.id || i} className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} w-full mb-0.5 px-2 md:px-6`}>
+            <React.Fragment key={msg.id || i}>
+              {showDateSeparator && (
+                <div className="flex justify-center my-3">
+                  <span className="text-[11px] rounded-md px-2.5 py-1 shadow-sm font-medium bg-white dark:bg-[#182229] text-[#54656f] dark:text-[#8696a0] border border-slate-200/50 dark:border-transparent">
+                    {currentDateLabel}
+                  </span>
+                </div>
+              )}
+            <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} w-full mb-0.5 px-2 md:px-6`}>
               <div className={`flex max-w-[92%] md:max-w-[70%] ${isOwn ? 'flex-row-reverse' : 'flex-row'} items-end gap-1.5`}>
 
                 <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-full`}>
@@ -756,6 +820,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
                 </div>
               </div>
             </div>
+            </React.Fragment>
           );
         })}
 
