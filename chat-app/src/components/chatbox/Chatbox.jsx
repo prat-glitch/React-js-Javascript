@@ -557,30 +557,30 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
     <div className="flex-1 h-full flex flex-col relative bg-[#e5ddd5] dark:bg-[#0b141a]">
 
       {/* ── HEADER ── */}
-      <div className="h-[60px] px-4 border-b flex items-center justify-between flex-shrink-0 z-10 relative bg-[#ededed] dark:bg-[#202c33] border-slate-300/40 dark:border-white/5">
-        <div className="flex items-center gap-3">
+      <div className="h-[68px] md:h-[60px] px-3 md:px-4 border-b flex items-center justify-between flex-shrink-0 z-10 relative bg-[#ededed] dark:bg-[#202c33] border-slate-300/40 dark:border-white/5">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           {/* Back button — mobile only */}
           <button
             onClick={() => setMobileView('sidebar')}
-            className="md:hidden min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-slate-300 dark:active:bg-slate-600"
+            className="md:hidden w-11 h-11 min-w-0 rounded-full flex items-center justify-center transition-all duration-200 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95"
             aria-label="Back to chats"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
           </button>
 
           <button
             onClick={() => setShowContactInfo && setShowContactInfo(true)}
-            className="flex items-center gap-3 group cursor-pointer text-left"
+            className="flex items-center gap-3 group cursor-pointer text-left min-w-0 active:opacity-80 transition-opacity"
           >
-            <div className="relative">
-              <img src={selectedChatUser.avatar || assets.avatar_icon} className="w-10 h-10 rounded-full object-cover shadow-sm border border-white dark:border-slate-700/50" alt="" />
+            <div className="relative flex-shrink-0">
+              <img src={selectedChatUser.avatar || assets.avatar_icon} className="w-11 h-11 md:w-10 md:h-10 rounded-full object-cover shadow-sm border border-white dark:border-slate-700/50" alt="" />
               {isOnline && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#ededed] dark:border-[#202c33]"></span>}
             </div>
-            <div className="flex flex-col text-left">
+            <div className="flex flex-col text-left min-w-0">
               <div className="flex items-center gap-1.5">
-                <h3 className="text-sm font-semibold leading-tight transition-colors text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-emerald-400">{selectedChatUser.username}</h3>
+                <h3 className="text-[17px] md:text-sm font-semibold leading-tight truncate transition-colors text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-emerald-400">{selectedChatUser.username}</h3>
               </div>
-              <div className="text-[11px] font-medium mt-0.5">
+              <div className="text-[13px] md:text-[11px] font-medium mt-0.5">
                 {typingIndicator ? (
                   <span className="text-blue-600 dark:text-emerald-400">typing...</span>
                 ) : isOnline ? (
@@ -626,7 +626,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
 
               navigate(`/call/${chatId}?type=audio&role=caller`)
             }}
-            className="w-11 h-11 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 active:bg-slate-300 dark:active:bg-slate-600"
+            className="w-12 h-12 md:w-11 md:h-11 rounded-lg flex items-center justify-center transition-all duration-200 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 active:scale-95"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
           </button>
@@ -656,11 +656,11 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
 
               navigate(`/call/${chatId}?type=video&role=caller`)
             }}
-            className="w-11 h-11 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 active:bg-slate-300 dark:active:bg-slate-600"
+            className="w-12 h-12 md:w-11 md:h-11 rounded-lg flex items-center justify-center transition-all duration-200 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-emerald-400 hover:bg-slate-200 dark:hover:bg-slate-700/50 active:scale-95"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
           </button>
-          <button className="w-11 h-11 rounded-lg flex items-center justify-center transition-all text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 active:bg-slate-300 dark:active:bg-slate-600">
+          <button className="w-12 h-12 md:w-11 md:h-11 rounded-lg flex items-center justify-center transition-all duration-200 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 active:scale-95">
             <svg className="w-5 h-5 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
           </button>
         </div>
@@ -738,7 +738,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
                       backgroundColor: bubbleBg,
                       color: bubbleTextColor
                     }}
-                    className="relative text-[14.2px] leading-relaxed break-words whitespace-pre-wrap rounded-lg shadow-sm border border-slate-200/40 dark:border-transparent w-full"
+                    className="relative text-[15.5px] md:text-[14.2px] leading-relaxed break-words whitespace-pre-wrap rounded-lg shadow-sm border border-slate-200/40 dark:border-transparent w-full"
                   >
                     {/* Image */}
                     {msg.media_type === 'image' && (
@@ -878,14 +878,14 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
           {/* Plus icon to add attachments (Outside Pill) */}
           <button
             onClick={() => fileinputref.current?.click()}
-            className="w-11 h-11 mb-[5px] rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 active:bg-slate-300 dark:active:bg-slate-600 transition-all focus:outline-none flex-shrink-0"
+            className="w-12 h-12 md:w-11 md:h-11 mb-[5px] rounded-full flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 active:scale-95 transition-all duration-200 focus:outline-none flex-shrink-0"
           >
-            <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg>
+            <svg className="w-6 h-6 md:w-[22px] md:h-[22px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg>
           </button>
 
           {/* Input Pill Container */}
           <div 
-            className="flex-1 min-h-[52px] flex items-end px-2 py-1.5 gap-2 rounded-[26px] shadow-sm"
+            className="flex-1 min-h-[56px] md:min-h-[52px] flex items-end px-2 py-1.5 gap-2 rounded-[28px] shadow-sm"
             style={{ 
               backgroundColor: theme === 'dark' ? '#2a3942' : '#ffffff',
             }}
@@ -938,7 +938,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
                   disabled={sending}
                   placeholder="Type a message"
                   rows="1"
-                  className="flex-1 max-h-[120px] min-h-[40px] py-2.5 px-2 bg-transparent border-none outline-none text-[15px] resize-none overflow-y-auto custom-scrollbar"
+                  className="flex-1 max-h-[120px] min-h-[40px] py-2.5 px-2 bg-transparent border-none outline-none text-[16px] md:text-[15px] resize-none overflow-y-auto custom-scrollbar"
                   style={{ 
                     color: theme === 'dark' ? '#e9edef' : '#111b21',
                   }}
@@ -951,7 +951,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
           {isRecording ? (
             <button
               onClick={() => stopRecording(true)}
-              className="w-11 h-11 mb-[5px] rounded-full flex items-center justify-center transition-all bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white shadow-sm flex-shrink-0"
+              className="w-12 h-12 md:w-11 md:h-11 mb-[5px] rounded-full flex items-center justify-center transition-all duration-200 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-sm flex-shrink-0"
               title="Send Voice Message"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -962,7 +962,7 @@ const Chatbox = ({ setMobileView, setShowContactInfo }) => {
             <button
               onClick={input.trim() ? sendMessage : startRecording}
               disabled={sending}
-              className="w-11 h-11 mb-[5px] rounded-full flex items-center justify-center transition-all flex-shrink-0 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 active:bg-slate-300 dark:active:bg-slate-600"
+              className="w-12 h-12 md:w-11 md:h-11 mb-[5px] rounded-full flex items-center justify-center transition-all duration-200 flex-shrink-0 text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-700/60 active:scale-95"
               title={input.trim() ? "Send Message" : "Record Audio Message"}
             >
               {input.trim() ? (

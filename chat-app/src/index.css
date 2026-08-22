@@ -68,6 +68,11 @@ body {
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
 /* ── Glassmorphism & Shadows ── */
 .fluid-card {
   background: var(--fluid-card-bg);
@@ -246,6 +251,15 @@ body {
   /* Bottom safe-area on message input */
   .chat-input-area {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  /* Smooth, native-feeling taps */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button, a, [role="button"] {
+    touch-action: manipulation;
   }
 }
 

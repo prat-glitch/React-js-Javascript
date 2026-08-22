@@ -87,7 +87,7 @@ const Chat = () => {
             <Chatbox setMobileView={setMobileView} setShowContactInfo={setShowContactInfo} />
           </div>
 
-          {/* Right Info Sidebar (Only visible when contact info is open) */}
+          {/* Right Info Sidebar (desktop column) */}
           {showContactInfo && (
             <div className={`
               flex-shrink-0 relative
@@ -104,6 +104,16 @@ const Chat = () => {
           )}
         </div>
       </div>
+
+      {/* Mobile contact info modal (WhatsApp-style overlay) */}
+      {showContactInfo && (
+      <div className="lg:hidden fixed inset-0 z-[200] bg-white dark:bg-[#111b21]" style={{ animation: 'slideInRight 0.22s ease' }}>
+          <Rightsidebar
+            showContactInfo={showContactInfo}
+            setShowContactInfo={setShowContactInfo}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -155,35 +155,54 @@ const Sidebar = ({ setMobileView }) => {
       </div>
 
       <div className="flex-1 flex flex-col bg-white dark:bg-[#051424] overflow-hidden border-r border-slate-100 dark:border-transparent">
-        <div className="px-4 pt-6 pb-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[24px] font-bold text-blue-600 dark:text-[#b4c5ff] tracking-tight">Messages</h2>
-            <button onClick={() => setActiveTab("contacts")} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 dark:text-[#c3c6d7] hover:bg-slate-100 dark:hover:bg-[#c3c6d7]/10 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="sticky top-0 z-20 px-4 pt-5 md:pt-6 pb-3 bg-white/90 dark:bg-[#051424]/92 backdrop-blur-md">
+          <div className="flex items-center justify-between mb-3.5">
+            <h2 className="text-[28px] md:text-[24px] font-bold text-blue-600 dark:text-[#b4c5ff] tracking-tight">Messages</h2>
+            <button
+              onClick={() => setActiveTab("contacts")}
+              className="w-12 h-12 md:w-10 md:h-10 rounded-full flex items-center justify-center text-slate-500 dark:text-[#c3c6d7] hover:bg-slate-100 dark:hover:bg-[#c3c6d7]/10 active:scale-95 transition-all"
+              aria-label="Add contact"
+            >
+              <svg className="w-6 h-6 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
               </svg>
             </button>
           </div>
-        </div>
 
-        <div className="px-4 pt-4 pb-6">
           <div className="relative group">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400 dark:text-[#c3c6d7] group-focus-within:text-blue-500 dark:group-focus-within:text-[#b4c5ff] transition-colors z-10">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400 dark:text-[#8696a0] group-focus-within:text-blue-500 dark:group-focus-within:text-[#b4c5ff] transition-colors z-10">
+              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
               </svg>
             </div>
             <input
-              type="text"
-              placeholder="Search conversations..."
-              className="w-full bg-slate-50 dark:bg-[#1c2b3c] border-none rounded-xl py-3 pr-4 text-[14px] text-slate-700 dark:text-[#d4e4fa] focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-[#b4c5ff]/50 transition-all placeholder:text-slate-400 dark:placeholder:text-[#c3c6d7]/60 outline-none"
-              style={{ paddingLeft: '3.5rem' }}
+              type="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              placeholder="Search"
+              className="w-full h-12 md:h-10 pl-[42px] pr-11 bg-slate-100 dark:bg-[#1c2b3c] border border-transparent rounded-full text-[16px] md:text-[14px] text-slate-800 dark:text-[#e9edef] placeholder:text-slate-400 dark:placeholder:text-[#8696a0] outline-none shadow-inner focus:bg-white dark:focus:bg-[#243447] focus:border-blue-400/40 dark:focus:border-[#b4c5ff]/30 focus:ring-2 focus:ring-blue-500/15 dark:focus:ring-[#b4c5ff]/20 transition-all duration-200"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
                 setShowSearch(e.target.value.length > 0)
               }}
             />
+            {searchQuery && (
+              <button
+                type="button"
+                data-no-touch
+                aria-label="Clear search"
+                onClick={() => {
+                  setSearchQuery("")
+                  setShowSearch(false)
+                }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 min-w-0 min-h-0 rounded-full flex items-center justify-center text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600/50 hover:text-slate-600 dark:hover:text-slate-200 active:scale-90 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -226,11 +245,11 @@ const Sidebar = ({ setMobileView }) => {
           )}
         </div>
         {/* Spacer for mobile bottom nav */}
-        <div className="lg:hidden w-full flex-shrink-0" style={{ height: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}></div>
+        <div className="lg:hidden w-full flex-shrink-0" style={{ height: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}></div>
       </div>
 
       {/* Mobile Bottom Nav */}
-      <div className="lg:hidden absolute bottom-0 left-0 right-0 bg-white dark:bg-[#122131] border-t border-slate-200 dark:border-transparent flex items-center justify-around px-2 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.02)] dark:shadow-none" style={{ height: 'calc(64px + env(safe-area-inset-bottom, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <div className="lg:hidden absolute bottom-0 left-0 right-0 bg-white/95 dark:bg-[#122131]/95 backdrop-blur-md border-t border-slate-200 dark:border-transparent flex items-center justify-around px-1 z-[60] shadow-[0_-4px_20px_rgba(0,0,0,0.04)] dark:shadow-none" style={{ height: 'calc(72px + env(safe-area-inset-bottom, 0px))', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {navItems.map((item) => {
           const isActive = activeTab === item.id && item.id !== 'theme' && item.id !== 'logout';
           return (
@@ -240,19 +259,19 @@ const Sidebar = ({ setMobileView }) => {
                 if (item.onClick) item.onClick();
                 else setActiveTab(item.id);
               }}
-              className={`flex flex-col items-center justify-center h-full gap-[4px] transition-all flex-1 relative ${isActive ? "text-slate-800 dark:text-slate-200" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+              className={`flex flex-col items-center justify-center h-full gap-1 transition-all duration-200 flex-1 relative active:scale-95 ${isActive ? "text-slate-800 dark:text-slate-200" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
             >
-              <div className={`px-[18px] py-[4px] rounded-full transition-all relative ${isActive ? "bg-slate-200/70 dark:bg-slate-700/80" : "bg-transparent"}`}>
-                <svg className={`w-[22px] h-[22px]`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className={`px-4 py-1.5 rounded-full transition-all duration-200 relative ${isActive ? "bg-slate-200/80 dark:bg-slate-700/80" : "bg-transparent"}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isActive ? "2.5" : "2"} d={item.icon}></path>
                 </svg>
                 {item.id === "messages" && totalUnread > 0 && (
-                  <span className="absolute top-0 right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-sm">
+                  <span className="absolute top-0 right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full shadow-sm">
                     {totalUnread > 99 ? '99+' : totalUnread}
                   </span>
                 )}
               </div>
-              <span className={`text-[11px] ${isActive ? 'font-bold' : 'font-semibold'}`}>{item.label}</span>
+              <span className={`text-[12px] ${isActive ? 'font-bold' : 'font-semibold'}`}>{item.label}</span>
             </button>
           )
         })}

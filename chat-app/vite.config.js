@@ -20,7 +20,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2}'],
       },
       devOptions: {
-        enabled: true,
+        enabled: false, // disabled in dev to prevent caching stale content
         type: 'module',
       },
     }),

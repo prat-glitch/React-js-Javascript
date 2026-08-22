@@ -47,13 +47,13 @@ const UserCard = ({ user, lastMsg, isSelected, onClick, isOnline, unread }) => {
   return (
     <div 
       className={`
-        flex items-center gap-4 p-4 cursor-pointer rounded-2xl transition-all duration-200 border-l-4
+        flex items-center gap-4 p-3.5 md:p-4 cursor-pointer rounded-2xl transition-all duration-200 border-l-4 active:scale-[0.99]
         ${isSelected ? "bg-blue-50 dark:bg-[#273647]/40 dark:border-[#b4c5ff] border-blue-500" : "hover:bg-slate-50 dark:hover:bg-[#273647]/20 border-transparent dark:border-transparent"}
       `}
       onClick={onClick}
     >
       <div className="relative flex-shrink-0">
-        <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-[#0d1c2d]">
+        <div className="w-[58px] h-[58px] md:w-14 md:h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-[#0d1c2d]">
           <img src={user.avatar || assets.avatar_icon} className="w-full h-full object-cover" alt={user.username} />
         </div>
         {isOnline && (
@@ -64,7 +64,7 @@ const UserCard = ({ user, lastMsg, isSelected, onClick, isOnline, unread }) => {
       <div className="flex-1 min-w-0">
         {/* Row 1 — name + timestamp */}
         <div className="flex items-baseline justify-between mb-0.5">
-          <span className={`text-[16px] font-bold truncate ${isSelected ? "text-blue-900 dark:text-[#d4e4fa]" : "text-slate-800 dark:text-[#d4e4fa]"}`}>
+          <span className={`text-[17px] md:text-[16px] font-bold truncate ${isSelected ? "text-blue-900 dark:text-[#d4e4fa]" : "text-slate-800 dark:text-[#d4e4fa]"}`}>
             {user.username}
           </span>
           <span className="text-[12px] font-medium text-slate-400 dark:text-[#c3c6d7] ml-2 flex-shrink-0">
@@ -74,7 +74,7 @@ const UserCard = ({ user, lastMsg, isSelected, onClick, isOnline, unread }) => {
 
         {/* Row 2 — last message + unread badge */}
         <div className="flex items-center justify-between">
-          <p className={`text-[14px] truncate flex-1 ${isSelected ? "text-blue-600 dark:text-[#b4c5ff] font-medium" : unread > 0 ? "text-slate-800 dark:text-[#d4e4fa] font-medium" : "text-slate-500 dark:text-[#c3c6d7]"}`}>
+          <p className={`text-[15px] md:text-[14px] truncate flex-1 ${isSelected ? "text-blue-600 dark:text-[#b4c5ff] font-medium" : unread > 0 ? "text-slate-800 dark:text-[#d4e4fa] font-medium" : "text-slate-500 dark:text-[#c3c6d7]"}`}>
             {displayText || (isOnline ? "Active now" : "New connection")}
           </p>
           {unread > 0 && (
