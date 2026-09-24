@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { validPushSubscription, validMessageWebhook } from '../lib/push-validation.js';
+import { shouldSendMessagePush, validPushSubscription, validMessageWebhook } from '../lib/push-validation.js';
 
 test('accepts real push subscription shape and rejects local endpoints', () => {
   const keys = { p256dh: 'a'.repeat(80), auth: 'b'.repeat(24) };
@@ -19,15 +19,22 @@ test('only new basic message inserts trigger a push', () => {
   assert.equal(validMessageWebhook({ type: 'INSERT', schema: 'public', table: 'messages', record }), false);
 });
 
+test('already read messages do not receive a delayed push', () => {
+  assert.equal(shouldSendMessagePush({ read_at: null }), true);
+  assert.equal(shouldSendMessagePush({ read_at: '2026-09-24T12:00:00Z' }), false);
+  assert.equal(shouldSendMessagePush(null), false);
+});
+
 test('service worker shows a generic notification for every push, even with the app open', async () => {
   const handlers = new Map();
   const shown = [];
+  let visible = true;
   const self = {
     addEventListener: (name, handler) => handlers.set(name, handler),
     skipWaiting: () => {},
     clients: {
       claim: async () => {},
-      matchAll: async () => [{ visibilityState: 'visible' }],
+      matchAll: async () => [{ visibilityState: visible ? 'visible' : 'hidden' }],
     },
     registration: { showNotification: async (title, options) => shown.push({ title, options }) },
     location: { origin: 'https://samlap.example' },
@@ -45,5 +52,12 @@ test('service worker shows a generic notification for every push, even with the 
   assert.equal(shown[0].title, 'Samlap');
   assert.match(shown[0].options.body, /new message/i);
   assert.doesNotMatch(shown[0].options.body, /private text/);
-  assert.equal(shown[0].options.silent, false);
+  assert.equal(shown[0].options.silent, true);
+  assert.equal(shown[0].options.vibrate, undefined);
+  visible = false;
+  let done;
+  handlers.get('push')({ data: { json: () => ({}) }, waitUntil: (promise) => { done = promise; } });
+  await done;
+  assert.equal(shown[2].options.silent, undefined);
+  assert.equal(shown[2].options.vibrate.length, 3);
 });

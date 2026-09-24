@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { adminClient, json } from '../../../../../lib/push-server';
-import { validMessageWebhook } from '../../../../../lib/push-validation';
+import { shouldSendMessagePush, validMessageWebhook } from '../../../../../lib/push-validation';
 import { pushConfigured, sendGenericPush } from '../../../../../lib/send-push';
 
 export const runtime = 'nodejs';
@@ -31,9 +31,10 @@ export async function POST(request) {
   try {
     const db = adminClient();
     const { data: message, error: messageError } = await db.from('basic_messages')
-      .select('id,chat_id,sender_id').eq('id', event.record.id).maybeSingle();
+      .select('id,chat_id,sender_id,read_at').eq('id', event.record.id).maybeSingle();
     if (messageError) throw messageError;
-    if (!message) return json({ sent: 0 });
+    // A foreground chat already made its own sound; don't send a stale push later.
+    if (!shouldSendMessagePush(message)) return json({ sent: 0 });
 
     const { data: chat, error: chatError } = await db.from('basic_chats')
       .select('member_a,member_b').eq('id', message.chat_id).maybeSingle();

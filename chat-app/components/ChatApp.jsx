@@ -5,6 +5,7 @@ import { getSupabase } from '../lib/supabase';
 import { normalizePhone, normalizeMessage } from '../lib/chat-utils';
 import { disablePush, enablePush, pushSupported, restorePush, testPush } from '../lib/push-client';
 import { playNotificationSound, unlockNotificationSound } from '../lib/notification-sound';
+import { createIncomingTracker, noticeLoadedMessages, noticeRealtimeMessage } from '../lib/incoming-alerts';
 
 const time = (value) => value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 const initials = (name) => (name || '?').trim().slice(0, 1).toUpperCase();
@@ -35,7 +36,7 @@ export default function ChatApp() {
   const activeRef = useRef(null);
   const endRef = useRef(null);
   const unreadRef = useRef(null);
-  const activeMessageIdsRef = useRef({ chatId: null, ids: null });
+  const incomingRef = useRef(createIncomingTracker());
   const user = session?.user;
   const userId = user?.id;
   const active = chats.find((chat) => chat.chat_id === activeId);
@@ -71,7 +72,7 @@ export default function ChatApp() {
 
   useEffect(() => {
     unreadRef.current = null;
-    activeMessageIdsRef.current = { chatId: null, ids: null };
+    incomingRef.current = createIncomingTracker();
   }, [userId]);
 
   useEffect(() => {
@@ -146,19 +147,16 @@ export default function ChatApp() {
         .range(offset, offset + 499);
       if (error) {
         setNotice('Could not load messages: ' + error.message);
-        break;
+        if (full) setChatLoading(false);
+        return;
       }
       rows = rows.concat(data || []);
       offset += (data || []).length;
       hasMore = Boolean(data && data.length === 500);
     }
     if (activeRef.current === chatId) {
-      const seen = activeMessageIdsRef.current;
-      if (seen.chatId === chatId && seen.ids && document.visibilityState === 'visible' &&
-          rows.some((message) => message.sender_id !== user.id && !seen.ids.has(message.id))) {
-        playNotificationSound();
-      }
-      activeMessageIdsRef.current = { chatId, ids: new Set(rows.map((message) => message.id)) };
+      const newIncoming = noticeLoadedMessages(incomingRef.current, rows, user.id);
+      if (newIncoming && document.visibilityState === 'visible') playNotificationSound();
       setMessages(rows);
     }
     if (full) setChatLoading(false);
@@ -169,9 +167,32 @@ export default function ChatApp() {
     refreshChats();
   }, [refreshChats, user?.id]);
 
+  const checkRecentMessages = useCallback(async () => {
+    const chatId = activeRef.current;
+    const tracker = incomingRef.current;
+    if (!chatId || document.visibilityState !== 'visible' || tracker.chatId !== chatId || !tracker.knownIds) return;
+    const { data, error } = await getSupabase().from('basic_messages')
+      .select('id,chat_id,sender_id')
+      .eq('chat_id', chatId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .limit(20);
+    if (error || activeRef.current !== chatId) return;
+    let changed = false;
+    let shouldSound = false;
+    for (const message of (data || []).reverse()) {
+      if (!tracker.knownIds.has(message.id)) {
+        changed = true;
+        if (noticeRealtimeMessage(tracker, message, userId)) shouldSound = true;
+      }
+    }
+    if (shouldSound) playNotificationSound();
+    if (changed) loadMessages(chatId);
+  }, [loadMessages, userId]);
+
   useEffect(() => {
     activeRef.current = activeId;
-    activeMessageIdsRef.current = { chatId: activeId, ids: null };
+    incomingRef.current = createIncomingTracker(activeId);
     setMessages([]);
     if (activeId) loadMessages(activeId, true);
   }, [activeId, loadMessages]);
@@ -182,6 +203,10 @@ export default function ChatApp() {
     const db = getSupabase();
     const channel = db.channel('basic-chat-' + user.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'basic_messages' }, (event) => {
+        if (event.eventType === 'INSERT' && event.new?.chat_id === activeRef.current &&
+            document.visibilityState === 'visible' && noticeRealtimeMessage(incomingRef.current, event.new, user.id)) {
+          playNotificationSound();
+        }
         refreshChats();
         if (event.new?.chat_id === activeRef.current) loadMessages(activeRef.current);
       }).subscribe();
@@ -189,6 +214,7 @@ export default function ChatApp() {
       refreshChats();
       if (activeRef.current) loadMessages(activeRef.current);
     }, 10000);
+    const recentPoll = setInterval(checkRecentMessages, 3000);
     const focus = () => {
       refreshChats();
       if (activeRef.current) loadMessages(activeRef.current);
@@ -196,10 +222,11 @@ export default function ChatApp() {
     window.addEventListener('focus', focus);
     return () => {
       clearInterval(poll);
+      clearInterval(recentPoll);
       window.removeEventListener('focus', focus);
       db.removeChannel(channel);
     };
-  }, [profileReady, user?.id, refreshChats, loadMessages]);
+  }, [profileReady, user?.id, refreshChats, loadMessages, checkRecentMessages]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length, activeId]);
 

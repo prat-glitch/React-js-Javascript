@@ -24,3 +24,7 @@ export function validMessageWebhook(value) {
     value?.table === 'basic_messages' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value?.record?.id || '');
 }
+
+export function shouldSendMessagePush(message) {
+  return Boolean(message && !message.read_at);
+}

@@ -5,13 +5,14 @@ self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     let data = {};
     try { data = event.data?.json() || {}; } catch { /* Show a generic notification. */ }
+    const visible = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .some((client) => client.visibilityState === 'visible');
     await self.registration.showNotification('Samlap', {
       body: 'You have a new message in Samlap.',
       icon: '/icon-512.png',
       badge: '/icon-512.png',
       tag: typeof data.tag === 'string' ? data.tag : 'new-message-' + Date.now(),
-      silent: false,
-      vibrate: [120, 60, 120],
+      ...(visible ? { silent: true } : { vibrate: [120, 60, 120] }),
       data: { url: typeof data.url === 'string' ? data.url : '/' },
     });
   })());
