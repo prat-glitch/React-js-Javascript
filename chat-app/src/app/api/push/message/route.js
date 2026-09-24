@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
-import webpush from 'web-push';
 import { adminClient, json } from '../../../../../lib/push-server';
 import { validMessageWebhook } from '../../../../../lib/push-validation';
+import { pushConfigured, sendGenericPush } from '../../../../../lib/send-push';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +17,7 @@ export async function POST(request) {
   if (!secretMatches(request.headers.get('x-push-webhook-secret'), secret)) {
     return json({ error: 'Unauthorized.' }, 401);
   }
-  if (!secret || !process.env.VAPID_PRIVATE_KEY || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_SUBJECT) {
+  if (!pushConfigured()) {
     return json({ error: 'Push delivery is not configured.' }, 503);
   }
   let event;
@@ -31,9 +31,9 @@ export async function POST(request) {
   try {
     const db = adminClient();
     const { data: message, error: messageError } = await db.from('basic_messages')
-      .select('id,chat_id,sender_id,read_at').eq('id', event.record.id).maybeSingle();
+      .select('id,chat_id,sender_id').eq('id', event.record.id).maybeSingle();
     if (messageError) throw messageError;
-    if (!message || message.read_at) return json({ sent: 0 });
+    if (!message) return json({ sent: 0 });
 
     const { data: chat, error: chatError } = await db.from('basic_chats')
       .select('member_a,member_b').eq('id', message.chat_id).maybeSingle();
@@ -47,33 +47,23 @@ export async function POST(request) {
     if (subscriptionError) throw subscriptionError;
     if (!subscriptions?.length) return json({ sent: 0 });
 
-    const payload = JSON.stringify({
-      title: 'Samlap',
-      body: 'You have a new message.',
-      url: '/?chat=' + message.chat_id,
-      tag: 'chat-' + message.chat_id,
-    });
-    const vapidDetails = {
-      subject: process.env.VAPID_SUBJECT,
-      publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-      privateKey: process.env.VAPID_PRIVATE_KEY,
-    };
+    const notification = { url: '/?chat=' + message.chat_id, tag: 'message-' + message.id };
     const results = await Promise.allSettled(subscriptions.map(async (subscription) => {
       try {
-        await webpush.sendNotification({
-          endpoint: subscription.endpoint,
-          keys: { p256dh: subscription.p256dh, auth: subscription.auth_secret },
-        }, payload, { vapidDetails, TTL: 3600, urgency: 'high', timeout: 10000 });
+        await sendGenericPush(subscription, notification);
         return true;
       } catch (error) {
         if ([404, 410].includes(error.statusCode)) {
           await db.from('basic_push_subscriptions').delete().eq('endpoint', subscription.endpoint);
         }
+        console.error('Push delivery failed:', error.statusCode || error.message);
         return false;
       }
     }));
-    return json({ sent: results.filter((result) => result.status === 'fulfilled' && result.value).length });
-  } catch {
+    const sent = results.filter((result) => result.status === 'fulfilled' && result.value).length;
+    return json({ sent, failed: results.length - sent }, sent ? 200 : 502);
+  } catch (error) {
+    console.error('Push webhook failed:', error);
     return json({ error: 'Push delivery failed.' }, 500);
   }
 }

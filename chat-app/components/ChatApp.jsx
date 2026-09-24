@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabase } from '../lib/supabase';
 import { normalizePhone, normalizeMessage } from '../lib/chat-utils';
-import { currentPushSubscription, disablePush, enablePush, pushSupported } from '../lib/push-client';
+import { disablePush, enablePush, pushSupported, restorePush, testPush } from '../lib/push-client';
+import { playNotificationSound, unlockNotificationSound } from '../lib/notification-sound';
 
 const time = (value) => value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 const initials = (name) => (name || '?').trim().slice(0, 1).toUpperCase();
@@ -33,8 +34,20 @@ export default function ChatApp() {
   const [pushBusy, setPushBusy] = useState(false);
   const activeRef = useRef(null);
   const endRef = useRef(null);
+  const unreadRef = useRef(null);
+  const activeMessageIdsRef = useRef({ chatId: null, ids: null });
   const user = session?.user;
+  const userId = user?.id;
   const active = chats.find((chat) => chat.chat_id === activeId);
+
+  useEffect(() => {
+    window.addEventListener('pointerdown', unlockNotificationSound);
+    window.addEventListener('keydown', unlockNotificationSound);
+    return () => {
+      window.removeEventListener('pointerdown', unlockNotificationSound);
+      window.removeEventListener('keydown', unlockNotificationSound);
+    };
+  }, []);
 
   useEffect(() => {
     const db = getSupabase();
@@ -55,6 +68,11 @@ export default function ChatApp() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    unreadRef.current = null;
+    activeMessageIdsRef.current = { chatId: null, ids: null };
+  }, [userId]);
 
   useEffect(() => {
     if (!user) {
@@ -86,15 +104,29 @@ export default function ChatApp() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) { setPushEnabled(false); return; }
-    currentPushSubscription().then((subscription) => setPushEnabled(Boolean(subscription)))
-      .catch(() => setPushEnabled(false));
-  }, [user]);
+    if (!userId) { setPushEnabled(false); return; }
+    let live = true;
+    restorePush().then((enabled) => { if (live) setPushEnabled(enabled); })
+      .catch(() => {
+        if (live) {
+          setPushEnabled(false);
+          setNotice('Notifications need to be enabled again on this device.');
+        }
+      });
+    return () => { live = false; };
+  }, [userId]);
 
   const refreshChats = useCallback(async () => {
     if (!profileReady) return;
     const { data, error } = await getSupabase().rpc('list_basic_chats');
     if (error) { setNotice(error.message); return; }
+    const previous = unreadRef.current;
+    if (previous && document.visibilityState === 'visible' && (data || []).some((chat) =>
+      chat.chat_id !== activeRef.current && Number(chat.unread_count) > (previous.get(chat.chat_id) || 0))) {
+      playNotificationSound();
+      setNotice('New message in Samlap.');
+    }
+    unreadRef.current = new Map((data || []).map((chat) => [chat.chat_id, Number(chat.unread_count)]));
     setChats(data || []);
   }, [profileReady]);
 
@@ -120,17 +152,26 @@ export default function ChatApp() {
       offset += (data || []).length;
       hasMore = Boolean(data && data.length === 500);
     }
-    if (activeRef.current === chatId) setMessages(rows);
+    if (activeRef.current === chatId) {
+      const seen = activeMessageIdsRef.current;
+      if (seen.chatId === chatId && seen.ids && document.visibilityState === 'visible' &&
+          rows.some((message) => message.sender_id !== user.id && !seen.ids.has(message.id))) {
+        playNotificationSound();
+      }
+      activeMessageIdsRef.current = { chatId, ids: new Set(rows.map((message) => message.id)) };
+      setMessages(rows);
+    }
     if (full) setChatLoading(false);
     if (activeRef.current === chatId && document.visibilityState === 'visible') {
       const { error } = await db.rpc('mark_basic_chat_read', { p_chat_id: chatId });
       if (error) setNotice(error.message);
     }
     refreshChats();
-  }, [refreshChats]);
+  }, [refreshChats, user?.id]);
 
   useEffect(() => {
     activeRef.current = activeId;
+    activeMessageIdsRef.current = { chatId: activeId, ids: null };
     setMessages([]);
     if (activeId) loadMessages(activeId, true);
   }, [activeId, loadMessages]);
@@ -142,10 +183,6 @@ export default function ChatApp() {
     const channel = db.channel('basic-chat-' + user.id)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'basic_messages' }, (event) => {
         refreshChats();
-        if (event.eventType === 'INSERT' && event.new?.sender_id !== user.id &&
-            event.new?.chat_id !== activeRef.current && document.visibilityState === 'visible') {
-          setNotice('New message received.');
-        }
         if (event.new?.chat_id === activeRef.current) loadMessages(activeRef.current);
       }).subscribe();
     const poll = setInterval(() => {
@@ -279,6 +316,19 @@ export default function ChatApp() {
     }
   }
 
+  async function sendTestNotification() {
+    setPushBusy(true);
+    setNotice('');
+    try {
+      await testPush();
+      setNotice('Test notification sent. Check this device’s notifications.');
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
   async function signOut() {
     try {
       await disablePush();
@@ -331,8 +381,10 @@ export default function ChatApp() {
           disabled={pushBusy || !pushSupported() || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
           {pushBusy ? 'Please wait…' : pushEnabled ? 'Disable notifications' : 'Enable notifications'}
         </button>
+        <button type="button" className="small-primary" onClick={sendTestNotification} disabled={!pushEnabled || pushBusy}>Send test notification</button>
+        <button type="button" className="text-button" onClick={playNotificationSound}>Test sound</button>
         {!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <small>Push setup is not complete yet.</small>}
-        {!pushSupported() && <small>Push needs HTTPS or localhost and a supported browser. On iPhone, install Samlap to the Home Screen first.</small>}
+        {!pushSupported() && <small>Push needs HTTPS and a supported browser. On iPhone, open Samlap in Safari, tap Share → Add to Home Screen, then launch the Home Screen app and enable notifications there.</small>}
         <button type="button" className="text-button" onClick={signOut}>Sign out</button>
       </form>}
       <form className="search-box" onSubmit={findUser}>

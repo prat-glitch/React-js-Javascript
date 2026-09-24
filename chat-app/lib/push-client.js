@@ -1,8 +1,15 @@
 import { getSupabase } from './supabase';
 
+function iosBrowserTab() {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return ios && !window.matchMedia('(display-mode: standalone)').matches && navigator.standalone !== true;
+}
+
 export function pushSupported() {
   return typeof window !== 'undefined' &&
     window.isSecureContext &&
+    !iosBrowserTab() &&
     'serviceWorker' in navigator &&
     'PushManager' in window &&
     'Notification' in window;
@@ -40,9 +47,9 @@ export async function currentPushSubscription() {
 
 export async function enablePush() {
   if (!pushSupported()) throw new Error('This browser needs HTTPS and Web Push support.');
-  const permission = await Notification.requestPermission();
+  const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Allow notifications in your browser settings first.');
-  await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
   // A newly installed worker cannot subscribe until it controls this origin.
   const registration = await navigator.serviceWorker.ready;
   const desiredKey = publicKeyBytes();
@@ -75,6 +82,32 @@ export async function enablePush() {
     if (created) await subscription.unsubscribe();
     throw error;
   }
+}
+
+export async function restorePush() {
+  if (!pushSupported() || Notification.permission !== 'granted') return false;
+  if (!await currentPushSubscription()) return false;
+  // Keep the server-side row and VAPID key in sync after login or deployment.
+  await enablePush();
+  return true;
+}
+
+export async function testPush() {
+  const subscription = await currentPushSubscription();
+  if (!subscription) throw new Error('Enable notifications on this device first.');
+  const { data: { session } } = await getSupabase().auth.getSession();
+  if (!session) throw new Error('Sign in to test notifications.');
+  const response = await fetch('/api/push/test', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + session.access_token,
+    },
+    body: JSON.stringify({ endpoint: subscription.endpoint }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || 'Could not send test notification.');
+  return result;
 }
 
 export async function disablePush() {
