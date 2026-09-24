@@ -1,12 +1,13 @@
 {
   "name": "Samlap",
   "short_name": "Samlap",
+  "id": "/",
   "description": "Real-time messaging with Samlap",
-  "start_url": "/chat",
+  "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#4F46E5",
-  "background_color": "#0b141a",
+  "theme_color": "#376fd3",
+  "background_color": "#edf4ff",
   "icons": [
     {
       "src": "/icon-512.png",
