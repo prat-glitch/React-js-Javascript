@@ -1,58 +1,51 @@
-name: Deploy to Netlify
+name: Deploy Samlap to Netlify
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [master]
+    paths:
+      - 'chat-app/**'
+      - '.github/workflows/deploy.yml'
   pull_request:
-    branches: [ main, master ]
+    branches: [master]
+    paths:
+      - 'chat-app/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
-    # This tells GitHub to run all steps inside the chat-app folder
     defaults:
       run:
         working-directory: ./chat-app
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
+      - name: Check out repository
+        uses: actions/checkout@v7
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
-          cache: 'npm'
-          # Tells npm cache to look inside the subfolder
+          node-version: '24'
+          cache: npm
           cache-dependency-path: chat-app/package-lock.json
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Run Lint
+      - name: Lint
         run: npm run lint
-
-      - name: Build Web App
+      - name: Test
+        run: npm test
+      - name: Check Next.js build on pull requests
+        if: github.event_name == 'pull_request'
         run: npm run build
+      - name: Build and deploy Next.js to Netlify
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
         env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_VAPID_PUBLIC_KEY: ${{ secrets.VITE_VAPID_PUBLIC_KEY }}
-          VITE_SOCKET_URL: ${{ secrets.VITE_SOCKET_URL }}
-
-      - name: Deploy to Netlify
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Deploying Preview..."
-            npx netlify-cli deploy --dir=dist --site=${{ secrets.NETLIFY_SITE_ID }} --auth=${{ secrets.NETLIFY_AUTH_TOKEN }}
-          else
-            echo "Deploying Production..."
-            npx netlify-cli deploy --prod --dir=dist --site=${{ secrets.NETLIFY_SITE_ID }} --auth=${{ secrets.NETLIFY_AUTH_TOKEN }}
-          fi
+          test -n "$NETLIFY_SITE_ID" || { echo "NETLIFY_SITE_ID is missing"; exit 1; }
+          test -n "$NETLIFY_AUTH_TOKEN" || { echo "NETLIFY_AUTH_TOKEN is missing"; exit 1; }
+          npx --yes netlify-cli@latest deploy --prod --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN"
