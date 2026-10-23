@@ -1,0 +1,159 @@
+/* Midnight blue: shared colors, solid panels, and a static conversation glow. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --chat-bg: #0b1120;
+  --chat-panel: #101828;
+  --chat-field: #141f32;
+  --chat-received: #1c293d;
+  --chat-text: #e9eef8;
+  --chat-muted: #a4b2c9;
+  --chat-border: #29364b;
+  --chat-blue: #3773d6;
+  --chat-link: #91baff;
+  --chat-yellow: #ffcc52;
+  --chat-on-yellow: #163567;
+  --chat-error: #ffb49c;
+  --chat-glow:
+    radial-gradient(ellipse at 95% 8%, #1b376e66, transparent 67%),
+    radial-gradient(ellipse at 0% 100%, #13274655, transparent 65%),
+    var(--chat-bg);
+  color: var(--chat-text);
+  background: var(--chat-bg);
+  scrollbar-color: #40516e var(--chat-panel);
+}
+
+:root[data-theme="dark"] body { background: var(--chat-glow); }
+:root[data-theme="dark"] input { color: var(--chat-text); caret-color: var(--chat-link); }
+:root[data-theme="dark"] input::placeholder { color: var(--chat-muted); opacity: 1; }
+:root[data-theme="dark"] input::selection, :root[data-theme="dark"] .bubble ::selection { background: #91baff55; }
+:root[data-theme="dark"] button:focus-visible, :root[data-theme="dark"] a:focus-visible, :root[data-theme="dark"] input:focus-visible {
+  outline: 2px solid var(--chat-link);
+  outline-offset: 3px;
+}
+
+:root[data-theme="dark"] .loading-screen, :root[data-theme="dark"] .brand, :root[data-theme="dark"] .auth-intro h1 { color: var(--chat-text); }
+:root[data-theme="dark"] .brand-mark { background: var(--chat-yellow); color: var(--chat-on-yellow); }
+:root[data-theme="dark"] .auth-intro p, :root[data-theme="dark"] .auth-card p { color: var(--chat-muted); }
+:root[data-theme="dark"] .auth-art span {
+  background: var(--chat-received);
+  box-shadow: 0 12px 35px #00000024;
+}
+:root[data-theme="dark"] .auth-art span:nth-child(2) { background: var(--chat-yellow); color: var(--chat-on-yellow); }
+:root[data-theme="dark"] .auth-art span:nth-child(3) { background: var(--chat-blue); }
+:root[data-theme="dark"] .auth-card {
+  background: var(--chat-panel);
+  border-color: var(--chat-border);
+  box-shadow: 0 24px 70px #00000030;
+}
+:root[data-theme="dark"] .auth-card label, :root[data-theme="dark"] .settings label { color: var(--chat-text); }
+:root[data-theme="dark"] .auth-card input, :root[data-theme="dark"] .settings input, :root[data-theme="dark"] .composer input, :root[data-theme="dark"] .gif-search input {
+  background: var(--chat-field);
+  border-color: var(--chat-border);
+  color: var(--chat-text);
+}
+:root[data-theme="dark"] .auth-card input:focus, :root[data-theme="dark"] .settings input:focus, :root[data-theme="dark"] .search-box input:focus, :root[data-theme="dark"] .composer input:focus, :root[data-theme="dark"] .gif-search input:focus {
+  border-color: var(--chat-link);
+  box-shadow: 0 0 0 3px #91baff22;
+}
+:root[data-theme="dark"] .primary, :root[data-theme="dark"] .small-primary { background: var(--chat-blue); color: #fff; }
+:root[data-theme="dark"] .divider { color: var(--chat-muted); }
+:root[data-theme="dark"] .divider:before, :root[data-theme="dark"] .divider:after { background: var(--chat-border); }
+:root[data-theme="dark"] .google {
+  background: var(--chat-field);
+  border-color: var(--chat-border);
+  color: var(--chat-text);
+}
+:root[data-theme="dark"] .switch, :root[data-theme="dark"] .text-button { color: var(--chat-link); }
+:root[data-theme="dark"] .auth-card .notice, :root[data-theme="dark"] .composer-error { color: var(--chat-error); }
+
+:root[data-theme="dark"] .app-shell { background: var(--chat-bg); }
+:root[data-theme="dark"] .sidebar, :root[data-theme="dark"] .conversation-header, :root[data-theme="dark"] .composer, :root[data-theme="dark"] .composer-dock {
+  background: var(--chat-panel);
+  border-color: var(--chat-border);
+}
+:root[data-theme="dark"] .icon-button, :root[data-theme="dark"] .picker-close {
+  background: var(--chat-field);
+  color: var(--chat-link);
+}
+:root[data-theme="dark"] .settings {
+  background: var(--chat-bg);
+  border-color: var(--chat-border);
+}
+:root[data-theme="dark"] .search-box {
+  background: var(--chat-field);
+  border-color: var(--chat-border);
+}
+:root[data-theme="dark"] .search-box input { color: var(--chat-text); }
+:root[data-theme="dark"] .search-box button { color: var(--chat-link); }
+:root[data-theme="dark"] .search-result {
+  background: #192b47;
+  border-color: #3a5680;
+  color: var(--chat-text);
+}
+:root[data-theme="dark"] .search-result small, :root[data-theme="dark"] .section-title, :root[data-theme="dark"] .chat-item-main small, :root[data-theme="dark"] .chat-meta, :root[data-theme="dark"] .empty-list, :root[data-theme="dark"] .sidebar-footer, :root[data-theme="dark"] .conversation-header small, :root[data-theme="dark"] .welcome p {
+  color: var(--chat-muted);
+}
+:root[data-theme="dark"] .search-result b, :root[data-theme="dark"] .back-button { color: var(--chat-link); }
+:root[data-theme="dark"] .section-title span { background: #1e3252; color: var(--chat-link); }
+:root[data-theme="dark"] .chat-item { background: var(--chat-panel); color: var(--chat-text); }
+:root[data-theme="dark"] .chat-item:hover { background: #16233a; }
+:root[data-theme="dark"] .chat-item.selected { background: #1a2d4c; }
+:root[data-theme="dark"] .avatar { background: #2b3e5f; color: #d4e2fb; }
+:root[data-theme="dark"] .chat-meta b { background: var(--chat-yellow); color: var(--chat-on-yellow); }
+:root[data-theme="dark"] .sidebar-footer { border-color: var(--chat-border); }
+
+:root[data-theme="dark"] .conversation { background: var(--chat-glow); }
+:root[data-theme="dark"] .messages-note { background: var(--chat-received); color: var(--chat-muted); }
+:root[data-theme="dark"] .bubble {
+  background: var(--chat-received);
+  border-color: #2a3a53;
+  color: var(--chat-text);
+  box-shadow: 0 2px 8px #00000012;
+}
+:root[data-theme="dark"] .mine .bubble { background: var(--chat-blue); color: #fff; }
+:root[data-theme="dark"] .bubble small { color: #c3cddd; opacity: 1; }
+:root[data-theme="dark"] .mine .bubble small { color: #fff; }
+:root[data-theme="dark"] .composer .send-button { background: var(--chat-yellow); color: var(--chat-on-yellow); }
+:root[data-theme="dark"] .welcome { padding: 24px; }
+:root[data-theme="dark"] .welcome-sun { background: var(--chat-yellow); color: var(--chat-on-yellow); }
+:root[data-theme="dark"] .toast {
+  background: var(--chat-received);
+  border: 1px solid #40516e;
+  color: var(--chat-text);
+  box-shadow: 0 12px 35px #00000044;
+}
+
+:root[data-theme="dark"] .composer .composer-tool {
+  background: var(--chat-field);
+  border-color: var(--chat-border);
+  color: var(--chat-link);
+}
+:root[data-theme="dark"] .composer .composer-tool[aria-expanded="true"] {
+  background: #1e3252;
+  border-color: var(--chat-link);
+}
+:root[data-theme="dark"] .composer button:focus-visible, :root[data-theme="dark"] .message-picker button:focus-visible {
+  outline-color: var(--chat-link);
+}
+:root[data-theme="dark"] .message-picker {
+  background: var(--chat-panel);
+  border-color: var(--chat-border);
+  box-shadow: 0 12px 36px #00000055;
+}
+:root[data-theme="dark"] .picker-header { border-color: var(--chat-border); }
+:root[data-theme="dark"] .picker-status, :root[data-theme="dark"] .giphy-credit, :root[data-theme="dark"] .gif-attachment { color: var(--chat-muted); }
+:root[data-theme="dark"] .gif-result { background: var(--chat-received); }
+
+/* Match the third-party picker without changing its layout or behavior. */
+:root[data-theme="dark"] .message-picker .EmojiPickerReact {
+  --epr-bg-color: var(--chat-panel);
+  --epr-text-color: var(--chat-text);
+  --epr-search-input-bg-color: var(--chat-field);
+  --epr-search-input-text-color: var(--chat-text);
+  --epr-search-input-placeholder-color: var(--chat-muted);
+  --epr-picker-border-color: var(--chat-border);
+  --epr-category-label-bg-color: var(--chat-panel);
+  --epr-category-label-text-color: var(--chat-muted);
+  --epr-hover-bg-color: var(--chat-received);
+  --epr-highlight-color: var(--chat-link);
+}

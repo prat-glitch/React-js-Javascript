@@ -8,21 +8,39 @@ A small Next.js + Supabase messaging app. It uses Supabase Auth (email/password 
 2. Run `npm install`.
 3. Stop the old Vite server if it is still running. Run `npm run dev` and open http://localhost:5173.
 
-The current chat and push schema is in migrations `012`–`018`. Earlier migration files remain as applied history; migrations `016`–`017` remove their old tables and policies. Migration `018` installs the direct push trigger.
+The current chat and push schema is in migrations `012`–`019`. Earlier migration files remain as applied history; migrations `016`–`017` remove their old tables and policies. Migration `018` installs the direct push trigger. Migration `019` adds private profile links and recipient-approved chat requests. Apply it with `supabase db push` before running this client against an existing project.
 
 In Supabase Authentication, enable Email and Google providers. Google is currently **disabled** on the linked project, so it must be configured before that button can work. Add your local and deployed URLs to URL Configuration redirect allow-list. Google sign-in also needs the Supabase OAuth callback configured in Google Cloud.
 
-For immediate email/password signup without confirmation emails, open the linked project's **Authentication → Providers → Email** settings and turn off **Confirm Email**. The local config already has `auth.email.enable_confirmations = false`, but that local setting does not change the hosted project. Existing accounts waiting for confirmation may still need to be confirmed or recreated by the project owner.
+For production identity verification, enable **Confirm Email** in the hosted project's **Authentication → Providers → Email** settings and configure a reliable SMTP provider. The connection functions require Supabase to mark an account's email as confirmed. If the project allows automatic confirmation, that field does **not** prove the person owns the email address. Local development currently allows automatic confirmation. Phone numbers are private, self-reported contact information and are not verified by this feature.
+
+Add the deployed `/connect/*` URLs (and local equivalent during development) to the Supabase redirect allow-list so email confirmation and Google sign-in return users to the profile link they opened. Keep production redirect origins restricted to domains you control.
 
 ## What changed
 
 This is a fresh, simple chat system. Previous Firebase sign-ins do not carry over; each person creates a Supabase account. The old Firebase-era users, messages, push subscriptions, media files, and buckets were permanently removed after owner approval. New messages are stored as plain text in `basic_messages`, protected by Supabase row-level access policies. This is **not end-to-end encryption**. Do not use it for sensitive messages requiring E2EE.
 
-The app includes direct text messages, search by exact email/phone, complete message history, live updates with polling fallback, unread counts, in-app alerts, and opt-in Web Push. Calls, file attachments, and chat deletion are not part of this basic version.
+The app includes direct text messages, private profile links and QR codes, recipient-approved connection requests, complete message history, live updates with polling fallback, unread counts, in-app alerts, and opt-in Web Push. Calls, file attachments, and chat deletion are not part of this basic version.
 
 ## Start a chat
 
-Both people need Supabase Auth accounts; the old Firebase credentials do not sign them into this new app. Sign in at http://localhost:5173, search for the other person's exact email (or the phone number they saved in Settings), select **Start chat**, type a message, and press Send. The other person can be offline; the message stays in Supabase and appears when they sign in.
+Both people need Supabase Auth accounts; the old Firebase credentials do not sign them into this new app. Sign in at http://localhost:5173 and complete your display name and private phone number in Settings. Email signup collects those fields; Google users complete their private profile after sign-in.
+
+1. Open **My QR** to copy/share your profile link or save its QR image. QR generation happens locally; no third-party QR service receives the profile link.
+2. The other person opens the link, pastes it under **Connect**, or chooses **Scan QR**. Scanning supports a camera or a saved image and only accepts links for the current app origin. Camera access requires HTTPS (or localhost); closing the scanner stops the camera.
+3. Review the display name and choose **Send chat request**. Opening or scanning a link never automatically requests or accepts a chat.
+4. The recipient opens **Requests** and chooses **Accept** or **Decline**. Only acceptance creates a new conversation. Pending, declined, and cancelled requests cannot send messages. Requests update live with a ten-second polling fallback; accepted senders can open their chat from Requests or the message list.
+5. The sender can cancel a pending request. Cancellation imposes a 24-hour retry cooldown. Declined requests remain closed to prevent repeated unwanted invitations. Duplicate and reciprocal requests reuse the same pair instead of creating extra chats.
+
+Public profile responses contain only a random share token, a contact-free display name, and the viewer's relationship status. Email and phone are visible only in the owner's private Settings. The database removes the old contact-lookup and instant-chat functions, denies direct profile/request/chat writes, and authorizes request responses using the verified session's `auth.uid()`. New request creation is limited to 20 per hour and 100 pending requests per sender, enforced in PostgreSQL. Existing conversations are preserved by the migration.
+
+Run `npm test` for PostgreSQL-backed privacy/consent tests, including denied anonymous/outsider access, sender impersonation, duplicate and reciprocal requests, decline/cancel handling, and rate limits. The test database runs in memory with PGlite and does not connect to the hosted project.
+
+## Emojis and GIFs
+
+The message input stays at the bottom of the chat while the message history scrolls. The separate **Emojis** button opens a searchable emoji picker; **GIF** opens a ready-to-use reaction library. Search for hello, love, happy, thanks, cat, and other reactions. Select a GIF, optionally add a caption, then press Send. GIFs use the existing message table, so no new migration is needed. Both people need the updated app to see the GIF inline.
+
+Emoji selection works immediately using `emoji-picker-react`. The built-in GIF reaction library requires no API key; its images load from GIPHY and need an internet connection. To enable live trending GIFs and full GIPHY search through the official `@giphy/js-fetch-api` package, create an API key at [GIPHY Developers](https://developers.giphy.com/dashboard/), set `GIPHY_API_KEY` in `.env.local` and your deployment environment, then restart/redeploy. Keep this variable server-only. The picker falls back to the searchable reaction library when the key is missing, live search fails, or the request times out.
 
 ## Enable Web Push
 

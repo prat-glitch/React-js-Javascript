@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getSupabase } from '../lib/supabase';
 import { normalizePhone, normalizeMessage } from '../lib/chat-utils';
+import { isEmojiOnly, messagePreview, parseGifMessage } from '../lib/message-content';
+import MessageComposer from './MessageComposer';
+import ProfileConnections from './ProfileConnections';
+import { validDisplayName, validPrivatePhone } from '../lib/profile-links';
+import { ThemeToggle } from './ThemeProvider';
 import { disablePush, enablePush, pushSupported, restorePush, testPush } from '../lib/push-client';
 import { playNotificationSound, unlockNotificationSound } from '../lib/notification-sound';
 import { createIncomingTracker, noticeLoadedMessages, noticeRealtimeMessage } from '../lib/incoming-alerts';
@@ -10,22 +15,21 @@ import { createIncomingTracker, noticeLoadedMessages, noticeRealtimeMessage } fr
 const time = (value) => value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 const initials = (name) => (name || '?').trim().slice(0, 1).toUpperCase();
 
-export default function ChatApp() {
+export default function ChatApp({ inviteToken = null }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileReady, setProfileReady] = useState(false);
   const [authMode, setAuthMode] = useState('login');
-  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
+  const [authForm, setAuthForm] = useState({ name: '', email: '', password: '', phone: '' });
   const [authBusy, setAuthBusy] = useState(false);
   const [googleReady, setGoogleReady] = useState(true);
   const [confirmationRequired, setConfirmationRequired] = useState(false);
   const [chats, setChats] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [search, setSearch] = useState('');
-  const [searchResult, setSearchResult] = useState(null);
-  const [searchBusy, setSearchBusy] = useState(false);
-  const [draft, setDraft] = useState('');
+  const [profile, setProfile] = useState(null);
+  const [profileName, setProfileName] = useState('');
+  const [profileBusy, setProfileBusy] = useState(false);
   const [sending, setSending] = useState(false);
   const [phone, setPhone] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -34,12 +38,27 @@ export default function ChatApp() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const activeRef = useRef(null);
-  const endRef = useRef(null);
+  const messageListRef = useRef(null);
+  const followMessagesRef = useRef(true);
   const unreadRef = useRef(null);
   const incomingRef = useRef(createIncomingTracker());
   const user = session?.user;
   const userId = user?.id;
   const active = chats.find((chat) => chat.chat_id === activeId);
+
+  useEffect(() => {
+    if (!userId || !window.visualViewport) return;
+    const viewport = window.visualViewport;
+    const resize = () => {
+      if (viewport.scale === 1) document.documentElement.style.setProperty('--chat-viewport-height', viewport.height + 'px');
+    };
+    resize();
+    viewport.addEventListener('resize', resize);
+    return () => {
+      viewport.removeEventListener('resize', resize);
+      document.documentElement.style.removeProperty('--chat-viewport-height');
+    };
+  }, [userId]);
 
   useEffect(() => {
     window.addEventListener('pointerdown', unlockNotificationSound);
@@ -78,6 +97,7 @@ export default function ChatApp() {
   useEffect(() => {
     if (!user) {
       setProfileReady(false);
+      setProfile(null);
       setChats([]);
       setActiveId(null);
       setMessages([]);
@@ -85,20 +105,17 @@ export default function ChatApp() {
     }
     let live = true;
     const db = getSupabase();
-    const name = user.user_metadata?.display_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
-    db.from('basic_profiles').upsert({
-      id: user.id,
-      email: user.email,
-      display_name: name,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'id' }).select('phone').single().then(({ data, error }) => {
+    db.rpc('ensure_basic_profile').then(({ data, error }) => {
       if (!live) return;
       if (error) {
         setNotice('Could not load your profile: ' + error.message);
         setProfileReady(false);
       } else {
+        setProfile(data);
+        setProfileName(data.display_name);
         setPhone(data?.phone || '');
         setProfileReady(true);
+        if (!validPrivatePhone(data?.phone)) setSettingsOpen(true);
       }
     });
     return () => { live = false; };
@@ -130,6 +147,11 @@ export default function ChatApp() {
     unreadRef.current = new Map((data || []).map((chat) => [chat.chat_id, Number(chat.unread_count)]));
     setChats(data || []);
   }, [profileReady]);
+
+  const openConnectedChat = useCallback(async (chatId) => {
+    await refreshChats();
+    setActiveId(chatId);
+  }, [refreshChats]);
 
   const loadMessages = useCallback(async (chatId, full = false) => {
     if (!chatId) return;
@@ -192,6 +214,7 @@ export default function ChatApp() {
 
   useEffect(() => {
     activeRef.current = activeId;
+    followMessagesRef.current = true;
     incomingRef.current = createIncomingTracker(activeId);
     setMessages([]);
     if (activeId) loadMessages(activeId, true);
@@ -228,7 +251,12 @@ export default function ChatApp() {
     };
   }, [profileReady, user?.id, refreshChats, loadMessages, checkRecentMessages]);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length, activeId]);
+  const scrollToLatest = useCallback(() => {
+    const list = messageListRef.current;
+    if (list && followMessagesRef.current) list.scrollTop = list.scrollHeight;
+  }, []);
+
+  useEffect(() => { scrollToLatest(); }, [messages.length, activeId, scrollToLatest]);
 
   useEffect(() => {
     if (!chats.length) return;
@@ -247,9 +275,18 @@ export default function ChatApp() {
     const email = authForm.email.trim().toLowerCase();
     let result;
     if (authMode === 'signup') {
+      const privatePhone = normalizePhone(authForm.phone);
+      if (!validDisplayName(authForm.name) || !validPrivatePhone(privatePhone) || /[a-z]/i.test(authForm.phone)) {
+        setNotice('Enter a display name without contact details and a valid private phone number.');
+        setAuthBusy(false);
+        return;
+      }
       result = await db.auth.signUp({
         email, password: authForm.password,
-        options: { data: { display_name: authForm.name.trim() } },
+        options: {
+          data: { display_name: authForm.name.trim(), private_phone: privatePhone },
+          emailRedirectTo: window.location.origin + window.location.pathname,
+        },
       });
     } else {
       result = await db.auth.signInWithPassword({ email, password: authForm.password });
@@ -257,10 +294,10 @@ export default function ChatApp() {
     if (result.error) {
       const rateLimited = /rate limit|too many|email.*exceeded/i.test(result.error.message);
       setNotice(rateLimited
-        ? 'Supabase has reached its email limit. An admin must turn off Confirm Email in Supabase Authentication → Providers → Email, or wait for the limit to reset.'
+        ? 'Too many attempts right now. Please wait a little and try again.'
         : result.error.message);
     } else if (authMode === 'signup' && !result.data.session) {
-      setNotice('Account created, but this Supabase project still requires an email confirmation before sign-in.');
+      setNotice('Check your email to confirm your account, then return here to sign in.');
     }
     setAuthBusy(false);
   }
@@ -269,58 +306,49 @@ export default function ChatApp() {
     setNotice('');
     const { error } = await getSupabase().auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + window.location.pathname },
     });
     if (error) setNotice(error.message);
   }
 
-  async function findUser(event) {
-    event.preventDefault();
-    if (!search.trim()) return;
-    setSearchBusy(true);
-    setSearchResult(null);
-    setNotice('');
-    const { data, error } = await getSupabase().rpc('find_basic_user', { p_identifier: search.trim() });
-    if (error) setNotice(error.message);
-    else if (data?.length) setSearchResult(data[0]);
-    else setNotice('No account found. The person needs to sign up in this new app first.');
-    setSearchBusy(false);
-  }
-
-  async function openNewChat(person) {
-    const { data, error } = await getSupabase().rpc('create_basic_chat', { p_other: person.id });
-    if (error) { setNotice(error.message); return; }
-    setSearch('');
-    setSearchResult(null);
-    await refreshChats();
-    setActiveId(data);
-  }
-
-  async function send(event) {
-    event.preventDefault();
-    const body = normalizeMessage(draft);
-    if (!activeId || !body || sending) return;
+  async function send(value) {
+    const body = normalizeMessage(value);
+    if (!activeId || !body || sending) return false;
     setSending(true);
     setNotice('');
-    const { error } = await getSupabase().from('basic_messages').insert({
-      chat_id: activeId, sender_id: user.id, body,
-    });
-    if (error) setNotice('Message not sent: ' + error.message);
-    else {
-      setDraft('');
+    try {
+      const { error } = await getSupabase().from('basic_messages').insert({
+        chat_id: activeId, sender_id: user.id, body,
+      });
+      if (error) throw error;
+      followMessagesRef.current = true;
       await loadMessages(activeId);
       refreshChats();
+      return true;
+    } catch (error) {
+      setNotice('Message not sent: ' + error.message);
+      return false;
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   }
 
-  async function savePhone(event) {
+  async function saveProfile(event) {
     event.preventDefault();
+    if (profileBusy) return;
     const value = normalizePhone(phone);
-    const { error } = await getSupabase().from('basic_profiles')
-      .update({ phone: value || null, updated_at: new Date().toISOString() }).eq('id', user.id);
-    if (error) setNotice(error.message);
-    else { setPhone(value); setSettingsOpen(false); setNotice('Phone number saved. Others can now find you by this number.'); }
+    if (!validDisplayName(profileName) || !validPrivatePhone(value) || /[a-z]/i.test(phone)) {
+      setNotice('Enter a display name without contact details and a valid private phone number.');
+      return;
+    }
+    setProfileBusy(true);
+    try {
+      const { data, error } = await getSupabase().rpc('save_basic_profile', { p_display_name: profileName.trim(), p_phone: value });
+      if (error) throw error;
+      setProfile(data); setProfileName(data.display_name); setPhone(data.phone);
+      setSettingsOpen(false); setNotice('Profile saved. Your email and phone number remain private.');
+    } catch (error) { setNotice(error.message); }
+    finally { setProfileBusy(false); }
   }
 
   async function togglePush() {
@@ -369,24 +397,30 @@ export default function ChatApp() {
 
   if (!session) return <main className="auth-shell">
     <section className="auth-intro">
-      <div className="brand"><span className="brand-mark">✦</span> Samlap</div>
+      <div className="auth-theme-header">
+        <div className="brand"><span className="brand-mark">✦</span> Samlap</div>
+        <ThemeToggle />
+      </div>
       <h1>Good conversations, kept simple.</h1>
-      <p>Find someone by email or phone, then talk. Your messages stay in your account until you choose otherwise.</p>
+      <p>Connect with a profile link or QR code. Start chatting when your request is accepted.</p>
       <div className="auth-art"><span>Hey! 👋</span><span>Good to hear from you ☀️</span><span>See you soon!</span></div>
     </section>
     <section className="auth-card">
       <h2>{authMode === 'signup' ? 'Create your account' : 'Welcome back'}</h2>
       <p>{authMode === 'signup' ? 'Start a fresh chat in a minute.' : 'Sign in to continue your conversations.'}</p>
+      {inviteToken && <p className="invite-auth-note">Sign in or create an account to view this profile and send a chat request.</p>}
       <form onSubmit={submitAuth}>
-        {authMode === 'signup' && <label>Your name<input required value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} placeholder="Alex" /></label>}
+        {authMode === 'signup' && <label>Display name (public)<input required minLength={2} maxLength={60} autoComplete="nickname" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} placeholder="Alex" /></label>}
         <label>Email<input required type="email" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} placeholder="you@example.com" /></label>
-        <label>Password<input required type="password" minLength={6} value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} placeholder="At least 6 characters" /></label>
+        {authMode === 'signup' && <label>Phone number (private)<input required type="tel" autoComplete="tel" value={authForm.phone} onChange={(e) => setAuthForm({ ...authForm, phone: e.target.value })} placeholder="Include country code" maxLength={32} /></label>}
+        <label>Password<input required type="password" minLength={authMode === 'signup' ? 8 : 6} autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'} value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} placeholder={authMode === 'signup' ? 'At least 8 characters' : 'Your password'} /></label>
+        {authMode === 'signup' && <small className="auth-privacy-note">Only your display name is shared. Your email and phone number stay private.</small>}
         <button className="primary" disabled={authBusy}>{authBusy ? 'Please wait…' : authMode === 'signup' ? 'Create account' : 'Sign in'}</button>
       </form>
       <div className="divider">or</div>
-      {confirmationRequired && <p className="provider-note">Email confirmation is currently required by Supabase. New accounts may hit its email rate limit until Confirm Email is disabled.</p>}
+      {confirmationRequired && authMode === 'signup' && <p className="provider-note">We’ll send you an email to confirm your account.</p>}
       <button className="google" onClick={googleLogin} disabled={!googleReady}>Continue with Google</button>
-      {!googleReady && <p className="provider-note">Google sign-in must be enabled in this Supabase project first.</p>}
+      {!googleReady && <p className="provider-note">Google sign-in is unavailable right now. Use email and password to continue.</p>}
       <button className="switch" onClick={() => { setAuthMode(authMode === 'signup' ? 'login' : 'signup'); setNotice(''); }}>
         {authMode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account'}
       </button>
@@ -398,12 +432,18 @@ export default function ChatApp() {
     <aside className={'sidebar ' + (activeId ? 'mobile-hidden' : '')}>
       <header className="sidebar-header">
         <div className="brand"><span className="brand-mark">✦</span> Samlap</div>
-        <button className="icon-button" title="Settings" onClick={() => setSettingsOpen(!settingsOpen)}>⚙</button>
+        <div className="sidebar-actions">
+          <ThemeToggle />
+          <button className="icon-button" title="Settings" onClick={() => setSettingsOpen(!settingsOpen)}>⚙</button>
+        </div>
       </header>
-      {settingsOpen && <form className="settings" onSubmit={savePhone}>
-        <strong>{user.user_metadata?.display_name || user.email}</strong>
-        <label>Phone number for search<input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1234567890" /></label>
-        <button className="small-primary">Save</button>
+      {settingsOpen && <form className="settings" onSubmit={saveProfile}>
+        <strong>Your profile</strong>
+        <label>Display name (public)<input required minLength={2} maxLength={60} value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Your display name" /></label>
+        <label>Email (private)<input type="email" value={user.email || ''} readOnly /></label>
+        <label>Phone number (private)<input required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Include country code" maxLength={32} /></label>
+        <small>Only you can see your email and phone. Your phone number is self-reported, not verified.</small>
+        <button className="small-primary" disabled={profileBusy || !profileReady}>{profileBusy ? 'Saving…' : 'Save profile'}</button>
         <button type="button" className="small-primary" onClick={togglePush}
           disabled={pushBusy || !pushSupported() || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
           {pushBusy ? 'Please wait…' : pushEnabled ? 'Disable notifications' : 'Enable notifications'}
@@ -414,45 +454,47 @@ export default function ChatApp() {
         {!pushSupported() && <small>Push needs HTTPS and a supported browser. On iPhone, open Samlap in Safari, tap Share → Add to Home Screen, then launch the Home Screen app and enable notifications there.</small>}
         <button type="button" className="text-button" onClick={signOut}>Sign out</button>
       </form>}
-      <form className="search-box" onSubmit={findUser}>
-        <input aria-label="Find by email or phone" value={search} onChange={(e) => { setSearch(e.target.value); setSearchResult(null); }} placeholder="Find by email or phone" />
-        <button disabled={searchBusy} title="Search">⌕</button>
-      </form>
-      {searchResult && <button className="search-result" onClick={() => openNewChat(searchResult)}>
-        <span className="avatar">{initials(searchResult.display_name)}</span><span><strong>{searchResult.display_name}</strong><small>{searchResult.email}</small></span><b>Start chat →</b>
-      </button>}
+      {profileReady && profile && <ProfileConnections key={user.id} profile={profile} userId={user.id}
+        inviteToken={inviteToken} onOpenChat={openConnectedChat} onRefreshChats={refreshChats} />}
       <div className="section-title">Messages <span>{chats.length}</span></div>
       <div className="chat-list">
         {chats.map((chat) => <button key={chat.chat_id} className={'chat-item ' + (chat.chat_id === activeId ? 'selected' : '')} onClick={() => setActiveId(chat.chat_id)}>
           <span className="avatar">{initials(chat.peer_name)}</span>
-          <span className="chat-item-main"><strong>{chat.peer_name}</strong><small>{chat.last_body || 'Start your conversation'}</small></span>
+          <span className="chat-item-main"><strong>{chat.peer_name}</strong><small>{messagePreview(chat.last_body) || 'Start your conversation'}</small></span>
           <span className="chat-meta"><time>{time(chat.last_at)}</time>{Number(chat.unread_count) > 0 && <b>{chat.unread_count}</b>}</span>
         </button>)}
-        {profileReady && chats.length === 0 && <p className="empty-list">No chats yet. Search for another Samlap account by email or phone, then tap Start chat.</p>}
+        {profileReady && chats.length === 0 && <p className="empty-list">No chats yet. Open a profile link or scan a QR code, then send a chat request.</p>}
         {!profileReady && <p className="empty-list">Preparing your account…</p>}
       </div>
-      <footer className="sidebar-footer">{user.email}</footer>
+      <footer className="sidebar-footer">{profile?.display_name || 'Your private account'}</footer>
     </aside>
     <section className={'conversation ' + (!activeId ? 'mobile-hidden' : '')}>
       {active ? <>
         <header className="conversation-header">
           <button className="back-button" onClick={() => setActiveId(null)} aria-label="Back to chats">←</button>
           <span className="avatar">{initials(active.peer_name)}</span>
-          <div><strong>{active.peer_name}</strong><small>{active.peer_email}</small></div>
+          <div><strong>{active.peer_name}</strong><small>Connected on Samlap</small></div>
+          <ThemeToggle />
         </header>
-        <div className="message-list">
+        <div className="message-list" ref={messageListRef} onScroll={(event) => {
+          const list = event.currentTarget;
+          followMessagesRef.current = list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+        }}>
           {chatLoading && <p className="messages-note">Loading messages…</p>}
           {!chatLoading && messages.length === 0 && <p className="messages-note">Say hello to {active.peer_name} 👋</p>}
-          {messages.map((message) => <div key={message.id} className={'message-row ' + (message.sender_id === user.id ? 'mine' : '')}>
-            <div className="bubble"><span>{message.body}</span><small>{time(message.created_at)} {message.sender_id === user.id ? (message.read_at ? '✓✓' : '✓') : ''}</small></div>
-          </div>)}
-          <div ref={endRef} />
+          {messages.map((message) => {
+            const gif = parseGifMessage(message.body);
+            const emojiOnly = !gif && isEmojiOnly(message.body);
+            return <div key={message.id} className={'message-row ' + (message.sender_id === user.id ? 'mine' : '')}>
+              {emojiOnly ? <span className="emoji-message" title={time(message.created_at)}>{message.body}</span> : <div className={'bubble' + (gif ? ' gif-bubble' : '')}>
+                {gif ? <div className="gif-message"><a href={gif.url} target="_blank" rel="noreferrer"><img src={gif.url} alt={gif.title} onLoad={scrollToLatest} /></a>{gif.text && <span>{gif.text}</span>}</div> : <span>{message.body}</span>}
+                <small>{time(message.created_at)} {message.sender_id === user.id ? (message.read_at ? '✓✓' : '✓') : ''}</small>
+              </div>}
+            </div>;
+          })}
         </div>
-        <form className="composer" onSubmit={send}>
-          <input aria-label="Message" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Write a message…" maxLength={10000} />
-          <button disabled={!draft.trim() || sending} title="Send message">➤</button>
-        </form>
-      </> : <div className="welcome"><div className="welcome-sun">✦</div><h2>Start a conversation.</h2><p>Search for another Samlap user by email or phone, choose Start chat, then send your first message.</p></div>}
+        <MessageComposer key={activeId} onSend={send} sending={sending} />
+      </> : <div className="welcome"><div className="welcome-sun">✦</div><h2>Connect on your terms.</h2><p>Share your profile QR or link. Chat starts when a request is accepted.</p></div>}
     </section>
     {notice && session && <div className="toast" role="alert">{notice}<button onClick={() => setNotice('')}>×</button></div>}
   </main>;

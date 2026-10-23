@@ -1,0 +1,35 @@
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+.auth-theme-header, .sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.auth-theme-header { justify-content: space-between; }
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #dce7f4;
+  border-radius: 11px;
+  background: #f0f5fe;
+  color: #2859a3;
+  font-size: 24px;
+  line-height: 1;
+}
+.theme-toggle:hover { background: #d9e9ff; }
+.theme-toggle:focus-visible { outline: 2px solid #3974db; outline-offset: 3px; }
+.conversation-header .theme-toggle { margin-left: auto; }
+:root[data-theme="dark"] .theme-toggle {
+  background: var(--chat-field);
+  border-color: var(--chat-border);
+  color: var(--chat-yellow);
+}
+:root[data-theme="dark"] .theme-toggle:hover { background: var(--chat-received); }
+:root[data-theme="dark"] .theme-toggle:focus-visible { outline-color: var(--chat-link); }
+@media (pointer: coarse) {
+  .theme-toggle { width: 44px; height: 44px; }
+}
