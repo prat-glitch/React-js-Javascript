@@ -1,14 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTransientMessage } from '../lib/useTransientMessage';
+import { useSpaceTaskNotifications } from '../lib/useSpaceTaskNotifications';
 import { getSupabase } from '../lib/supabase';
 import { normalizePhone, normalizeMessage } from '../lib/chat-utils';
 import { isEmojiOnly, messagePreview, parseGifMessage } from '../lib/message-content';
 import MessageComposer from './MessageComposer';
+import TypingIndicator from './TypingIndicator';
+import { useConversationTyping } from '../lib/useConversationTyping';
 import ProfileConnections from './ProfileConnections';
+import SpaceList from './SpaceList';
+import SpaceConversation from './SpaceConversation';
 import { validDisplayName, validPrivatePhone } from '../lib/profile-links';
 import { ThemeToggle } from './ThemeProvider';
-import { disablePush, enablePush, pushSupported, restorePush, testPush } from '../lib/push-client';
+import { disablePush, enablePush, pushSupported, restorePush } from '../lib/push-client';
 import { playNotificationSound, unlockNotificationSound } from '../lib/notification-sound';
 import { createIncomingTracker, noticeLoadedMessages, noticeRealtimeMessage } from '../lib/incoming-alerts';
 
@@ -26,6 +32,9 @@ export default function ChatApp({ inviteToken = null }) {
   const [confirmationRequired, setConfirmationRequired] = useState(false);
   const [chats, setChats] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const [activeSpaceId, setActiveSpaceId] = useState(null);
+  const [spaceEntry, setSpaceEntry] = useState({ view: 'chat', taskId: null, key: 0 });
+  const [spaceRevision, setSpaceRevision] = useState(0);
   const [messages, setMessages] = useState([]);
   const [profile, setProfile] = useState(null);
   const [profileName, setProfileName] = useState('');
@@ -33,7 +42,7 @@ export default function ChatApp({ inviteToken = null }) {
   const [sending, setSending] = useState(false);
   const [phone, setPhone] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useTransientMessage();
   const [chatLoading, setChatLoading] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
@@ -42,9 +51,22 @@ export default function ChatApp({ inviteToken = null }) {
   const followMessagesRef = useRef(true);
   const unreadRef = useRef(null);
   const incomingRef = useRef(createIncomingTracker());
+  const pollErrorsRef = useRef({});
   const user = session?.user;
   const userId = user?.id;
+  const taskAlerts = useSpaceTaskNotifications(userId, profileReady);
   const active = chats.find((chat) => chat.chat_id === activeId);
+  const { typingUserIds, onTypingChange } = useConversationTyping({
+    conversationId: activeId, kind: 'chat', userId,
+    enabled: profileReady && Boolean(active) && !activeSpaceId && !settingsOpen,
+  });
+
+  // Polling reports each failure once, until recovery or a different failure.
+  const reportPollingFailure = useCallback((source, message) => {
+    if (pollErrorsRef.current[source] === message) return;
+    pollErrorsRef.current[source] = message;
+    if (message) setNotice(message);
+  }, [setNotice]);
 
   useEffect(() => {
     if (!userId || !window.visualViewport) return;
@@ -87,11 +109,12 @@ export default function ChatApp({ inviteToken = null }) {
       setLoading(false);
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [setNotice]);
 
   useEffect(() => {
     unreadRef.current = null;
     incomingRef.current = createIncomingTracker();
+    pollErrorsRef.current = {};
   }, [userId]);
 
   useEffect(() => {
@@ -100,6 +123,7 @@ export default function ChatApp({ inviteToken = null }) {
       setProfile(null);
       setChats([]);
       setActiveId(null);
+      setActiveSpaceId(null);
       setMessages([]);
       return;
     }
@@ -119,7 +143,7 @@ export default function ChatApp({ inviteToken = null }) {
       }
     });
     return () => { live = false; };
-  }, [user]);
+  }, [user, setNotice]);
 
   useEffect(() => {
     if (!userId) { setPushEnabled(false); return; }
@@ -132,12 +156,13 @@ export default function ChatApp({ inviteToken = null }) {
         }
       });
     return () => { live = false; };
-  }, [userId]);
+  }, [userId, setNotice]);
 
   const refreshChats = useCallback(async () => {
     if (!profileReady) return;
     const { data, error } = await getSupabase().rpc('list_basic_chats');
-    if (error) { setNotice(error.message); return; }
+    reportPollingFailure('chats', error?.message || '');
+    if (error) return;
     const previous = unreadRef.current;
     if (previous && document.visibilityState === 'visible' && (data || []).some((chat) =>
       chat.chat_id !== activeRef.current && Number(chat.unread_count) > (previous.get(chat.chat_id) || 0))) {
@@ -146,12 +171,31 @@ export default function ChatApp({ inviteToken = null }) {
     }
     unreadRef.current = new Map((data || []).map((chat) => [chat.chat_id, Number(chat.unread_count)]));
     setChats(data || []);
-  }, [profileReady]);
+  }, [profileReady, reportPollingFailure, setNotice]);
 
   const openConnectedChat = useCallback(async (chatId) => {
     await refreshChats();
+    setActiveSpaceId(null);
     setActiveId(chatId);
   }, [refreshChats]);
+
+  const updateSpaces = useCallback(() => setSpaceRevision((value) => value + 1), []);
+  const openSpace = useCallback((spaceId, view = 'chat', taskId = null) => {
+    setActiveId(null); setActiveSpaceId(spaceId);
+    setSpaceEntry((current) => ({ view: view === 'tasks' ? 'tasks' : 'chat', taskId, key: current.key + 1 }));
+  }, []);
+  const closeSpace = useCallback(() => { setActiveSpaceId(null); setSpaceRevision((value) => value + 1); }, []);
+
+  useEffect(() => {
+    if (!profileReady) return;
+    const query = new URLSearchParams(window.location.search);
+    const requested = query.get('space');
+    if (requested && /^[0-9a-f-]{36}$/i.test(requested)) {
+      const task = query.get('task');
+      openSpace(requested, query.get('view'), task && /^[0-9a-f-]{36}$/i.test(task) ? task : null);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [profileReady, openSpace]);
 
   const loadMessages = useCallback(async (chatId, full = false) => {
     if (!chatId) return;
@@ -168,7 +212,7 @@ export default function ChatApp({ inviteToken = null }) {
         .order('id', { ascending: true })
         .range(offset, offset + 499);
       if (error) {
-        setNotice('Could not load messages: ' + error.message);
+        reportPollingFailure('messages', 'Could not load messages: ' + error.message);
         if (full) setChatLoading(false);
         return;
       }
@@ -176,6 +220,7 @@ export default function ChatApp({ inviteToken = null }) {
       offset += (data || []).length;
       hasMore = Boolean(data && data.length === 500);
     }
+    reportPollingFailure('messages', '');
     if (activeRef.current === chatId) {
       const newIncoming = noticeLoadedMessages(incomingRef.current, rows, user.id);
       if (newIncoming && document.visibilityState === 'visible') playNotificationSound();
@@ -184,10 +229,10 @@ export default function ChatApp({ inviteToken = null }) {
     if (full) setChatLoading(false);
     if (activeRef.current === chatId && document.visibilityState === 'visible') {
       const { error } = await db.rpc('mark_basic_chat_read', { p_chat_id: chatId });
-      if (error) setNotice(error.message);
+      reportPollingFailure('read', error?.message || '');
     }
     refreshChats();
-  }, [refreshChats, user?.id]);
+  }, [refreshChats, user?.id, reportPollingFailure]);
 
   const checkRecentMessages = useCallback(async () => {
     const chatId = activeRef.current;
@@ -371,19 +416,6 @@ export default function ChatApp({ inviteToken = null }) {
     }
   }
 
-  async function sendTestNotification() {
-    setPushBusy(true);
-    setNotice('');
-    try {
-      await testPush();
-      setNotice('Test notification sent. Check this device’s notifications.');
-    } catch (error) {
-      setNotice(error.message);
-    } finally {
-      setPushBusy(false);
-    }
-  }
-
   async function signOut() {
     try {
       await disablePush();
@@ -429,12 +461,12 @@ export default function ChatApp({ inviteToken = null }) {
   </main>;
 
   return <main className="app-shell">
-    <aside className={'sidebar ' + (activeId ? 'mobile-hidden' : '')}>
+    <aside className={'sidebar ' + (activeId || activeSpaceId ? 'mobile-hidden' : '')}>
       <header className="sidebar-header">
         <div className="brand"><span className="brand-mark">✦</span> Samlap</div>
         <div className="sidebar-actions">
           <ThemeToggle />
-          <button className="icon-button" title="Settings" onClick={() => setSettingsOpen(!settingsOpen)}>⚙</button>
+          <button className="icon-button" title={settingsOpen ? 'Close settings' : 'Settings'} aria-label={settingsOpen ? 'Close settings' : 'Settings'} aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}>{settingsOpen ? '×' : '⚙'}</button>
         </div>
       </header>
       {settingsOpen && <form className="settings" onSubmit={saveProfile}>
@@ -448,32 +480,32 @@ export default function ChatApp({ inviteToken = null }) {
           disabled={pushBusy || !pushSupported() || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY}>
           {pushBusy ? 'Please wait…' : pushEnabled ? 'Disable notifications' : 'Enable notifications'}
         </button>
-        <button type="button" className="small-primary" onClick={sendTestNotification} disabled={!pushEnabled || pushBusy}>Send test notification</button>
-        <button type="button" className="text-button" onClick={playNotificationSound}>Test sound</button>
         {!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && <small>Push setup is not complete yet.</small>}
         {!pushSupported() && <small>Push needs HTTPS and a supported browser. On iPhone, open Samlap in Safari, tap Share → Add to Home Screen, then launch the Home Screen app and enable notifications there.</small>}
         <button type="button" className="text-button" onClick={signOut}>Sign out</button>
       </form>}
       {profileReady && profile && <ProfileConnections key={user.id} profile={profile} userId={user.id}
-        inviteToken={inviteToken} onOpenChat={openConnectedChat} onRefreshChats={refreshChats} />}
+        hidden={settingsOpen} inviteToken={inviteToken} onOpenChat={openConnectedChat} onRefreshChats={refreshChats}>
       <div className="section-title">Messages <span>{chats.length}</span></div>
       <div className="chat-list">
-        {chats.map((chat) => <button key={chat.chat_id} className={'chat-item ' + (chat.chat_id === activeId ? 'selected' : '')} onClick={() => setActiveId(chat.chat_id)}>
+        {chats.map((chat) => <button key={chat.chat_id} className={'chat-item ' + (chat.chat_id === activeId ? 'selected' : '')} onClick={() => { setActiveSpaceId(null); setActiveId(chat.chat_id); }}>
           <span className="avatar">{initials(chat.peer_name)}</span>
           <span className="chat-item-main"><strong>{chat.peer_name}</strong><small>{messagePreview(chat.last_body) || 'Start your conversation'}</small></span>
           <span className="chat-meta"><time>{time(chat.last_at)}</time>{Number(chat.unread_count) > 0 && <b>{chat.unread_count}</b>}</span>
         </button>)}
         {profileReady && chats.length === 0 && <p className="empty-list">No chats yet. Open a profile link or scan a QR code, then send a chat request.</p>}
-        {!profileReady && <p className="empty-list">Preparing your account…</p>}
       </div>
+      <SpaceList userId={user.id} contacts={chats} activeSpaceId={activeSpaceId} onOpenSpace={openSpace} refreshKey={spaceRevision} />
+      </ProfileConnections>}
+      {!profileReady && !settingsOpen && <p className="empty-list">Preparing your account…</p>}
       <footer className="sidebar-footer">{profile?.display_name || 'Your private account'}</footer>
     </aside>
-    <section className={'conversation ' + (!activeId ? 'mobile-hidden' : '')}>
-      {active ? <>
+    <section className={'conversation ' + (!activeId && !activeSpaceId ? 'mobile-hidden' : '')}>
+      {activeSpaceId ? <SpaceConversation key={activeSpaceId + ':' + spaceEntry.key} spaceId={activeSpaceId} user={user} contacts={chats} initialView={spaceEntry.view} initialTaskId={spaceEntry.taskId} onBack={closeSpace} onUpdated={updateSpaces} /> : active ? <>
         <header className="conversation-header">
           <button className="back-button" onClick={() => setActiveId(null)} aria-label="Back to chats">←</button>
           <span className="avatar">{initials(active.peer_name)}</span>
-          <div><strong>{active.peer_name}</strong><small>Connected on Samlap</small></div>
+          <div className="conversation-peer"><strong>{active.peer_name}</strong><small>Connected on Samlap</small></div>
           <ThemeToggle />
         </header>
         <div className="message-list" ref={messageListRef} onScroll={(event) => {
@@ -493,9 +525,12 @@ export default function ChatApp({ inviteToken = null }) {
             </div>;
           })}
         </div>
-        <MessageComposer key={activeId} onSend={send} sending={sending} />
+        <TypingIndicator names={typingUserIds.includes(active.peer_id) ? [active.peer_name] : []} />
+        <MessageComposer key={activeId} onSend={send} sending={sending} onTypingChange={onTypingChange} />
       </> : <div className="welcome"><div className="welcome-sun">✦</div><h2>Connect on your terms.</h2><p>Share your profile QR or link. Chat starts when a request is accepted.</p></div>}
     </section>
-    {notice && session && <div className="toast" role="alert">{notice}<button onClick={() => setNotice('')}>×</button></div>}
+    {(notice || taskAlerts.notice) && session && <div className="toast" role="status"><span>{notice || taskAlerts.notice.text}</span>
+      {!notice && taskAlerts.notice && <button className="toast-action" onClick={() => { openSpace(taskAlerts.notice.space_id, 'tasks', taskAlerts.notice.task_id); taskAlerts.dismiss(); }}>View tasks</button>}
+      <button aria-label="Dismiss notification" onClick={() => { setNotice(''); taskAlerts.dismiss(); }}>×</button></div>}
   </main>;
 }

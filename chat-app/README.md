@@ -8,7 +8,7 @@ A small Next.js + Supabase messaging app. It uses Supabase Auth (email/password 
 2. Run `npm install`.
 3. Stop the old Vite server if it is still running. Run `npm run dev` and open http://localhost:5173.
 
-The current chat and push schema is in migrations `012`–`019`. Earlier migration files remain as applied history; migrations `016`–`017` remove their old tables and policies. Migration `018` installs the direct push trigger. Migration `019` adds private profile links and recipient-approved chat requests. Apply it with `supabase db push` before running this client against an existing project.
+The current schema is in migrations `012`–`022`. Earlier migration files remain as applied history; migrations `016`–`017` remove their old tables and policies. Migration `018` installs the direct push trigger. Migration `019` adds private profile links and recipient-approved chat requests. Migration `020` adds private conversation spaces, group invitations, attachments, links, decisions, and tasks. Migration `021` adds group admins, trusted activity messages, and private task assignment notifications. Migration `022` adds group polls and optional decisions linked to final results. Apply pending migrations with `supabase db push` before running this client against an existing project.
 
 In Supabase Authentication, enable Email and Google providers. Google is currently **disabled** on the linked project, so it must be configured before that button can work. Add your local and deployed URLs to URL Configuration redirect allow-list. Google sign-in also needs the Supabase OAuth callback configured in Google Cloud.
 
@@ -20,7 +20,17 @@ Add the deployed `/connect/*` URLs (and local equivalent during development) to 
 
 This is a fresh, simple chat system. Previous Firebase sign-ins do not carry over; each person creates a Supabase account. The old Firebase-era users, messages, push subscriptions, media files, and buckets were permanently removed after owner approval. New messages are stored as plain text in `basic_messages`, protected by Supabase row-level access policies. This is **not end-to-end encryption**. Do not use it for sensitive messages requiring E2EE.
 
-The app includes direct text messages, private profile links and QR codes, recipient-approved connection requests, complete message history, live updates with polling fallback, unread counts, in-app alerts, and opt-in Web Push. Calls, file attachments, and chat deletion are not part of this basic version.
+The app includes direct text messages, private profile links and QR codes, recipient-approved connection requests, complete message history, live updates with polling fallback, unread counts, in-app alerts, and opt-in direct-message Web Push. Conversation spaces add group chat, private attachments, categorized resources, pinned decisions, and assigned tasks. Calls and chat deletion are not included.
+
+## Conversation spaces
+
+Open **Chats → Spaces → New** to name a shared plan and invite your connections. People explicitly join before they can see its contents. Each space opens on **Chat**, with **Decisions** and **Tasks** beside it. The message **···** menu turns a message into an assigned task or a pinned decision, preserving a reference to the original message. Task deadlines are optional, and “Anyone” creates a shared checklist item.
+
+Tap the **space name → Media, files and links** for categorized photos/videos/audio/GIFs, documents, and saved URLs. HTTP/HTTPS links in chat are collected automatically. Use **＋** in the composer for attachments up to 20 MiB; previews and downloads check membership through authenticated private Storage requests. The same people can belong to several independent spaces.
+
+Open **Decisions → Polls → Create poll** to ask a question with 2–8 choices. Each joined member has one vote and can change or remove it while voting is open. Members see totals and their own choice; individual ballots stay private. The creator or a group admin closes voting, then optionally chooses **Make a decision** to pin a top result with its final counts. Ties require explicitly choosing an agreed tied option; zero-vote polls cannot become poll decisions. Nothing is pinned automatically. **Pin decision** and the message **··· → Pin as a decision** workflow remain available without a poll.
+
+Spaces support 20 people including pending invitations. Group admins manage members and assign tasks. Members can create unassigned shared checklist items; assignees and admins can complete assigned tasks. Joins, departures, admin changes, task changes, and decisions appear as quiet system text in chat. Assignment alerts and badges are private to the assignee, with opt-in Web Push using the existing push setup and the new `/api/push/task-assignment` route. Ordinary group-message Web Push and ownership transfer remain unavailable. Success toasts dismiss after five seconds, assignment toasts after six, and transient action errors after eight; a new notice resets its timer. See [the workflow and system design](docs/conversation-spaces.md) for details.
 
 ## Start a chat
 
@@ -35,6 +45,10 @@ Both people need Supabase Auth accounts; the old Firebase credentials do not sig
 Public profile responses contain only a random share token, a contact-free display name, and the viewer's relationship status. Email and phone are visible only in the owner's private Settings. The database removes the old contact-lookup and instant-chat functions, denies direct profile/request/chat writes, and authorizes request responses using the verified session's `auth.uid()`. New request creation is limited to 20 per hour and 100 pending requests per sender, enforced in PostgreSQL. Existing conversations are preserved by the migration.
 
 Run `npm test` for PostgreSQL-backed privacy/consent tests, including denied anonymous/outsider access, sender impersonation, duplicate and reciprocal requests, decline/cancel handling, and rate limits. The test database runs in memory with PGlite and does not connect to the hosted project.
+
+## Typing indicators
+
+Typing indicators work in direct messages and space chats after applying `supabase/migrations/023_conversation_typing.sql` and deploying the updated client. They show member names and animated dots above the composer, stop after three seconds without edits, and expire disconnected sessions after six seconds. Only authenticated conversation members can publish or read activity; draft text is never sent. See [typing implementation details](docs/conversation-spaces.md#typing-indicators).
 
 ## Emojis and GIFs
 
@@ -51,6 +65,6 @@ The code and new `basic_push_subscriptions` table are installed. Push to a close
 3. Deploy Samlap on a host that runs Next.js API routes over HTTPS. Set the same five push environment variables there and rebuild so the public VAPID key reaches the browser.
 4. The linked Supabase project already has a direct `pg_net` trigger on `basic_messages` and the shared secret in Vault. **Do not create a Dashboard webhook.** Its installed Database Webhooks integration is missing its helper function, so the direct trigger replaces that setup.
 5. On **each device**, the recipient signs in, opens **Settings → Enable notifications**, and allows browser notifications. On iPhone/iPad, first open the HTTPS site in Safari, choose **Share → Add to Home Screen**, launch that installed app, then enable notifications there. A Safari tab cannot receive iPhone Web Push.
-6. Tap **Send test notification** in Settings on that device. It should display a generic Samlap notification even while the app is open. If it fails, the app reports a delivery error. Then test with two accounts: close Samlap on the recipient device, send a message from the other account, and tap the notification. Reopen the chat to see the unread badge clear.
+6. Verify delivery with two accounts: close Samlap on the recipient device, send a real message from the other account, and tap the notification. Reopen the chat to see the unread badge clear. Production Settings contains only the notification opt-in control; diagnostic sound and notification controls and their test endpoint have been removed.
 
 Push payloads contain only a generic notice and chat ID, not message text. The subscription endpoint and keys stay server-side behind Supabase Auth. The app plays one short sound as soon as a new message reaches a visible chat; a lightweight three-second check covers missed live events. Browsers require a user tap/key press before page audio is allowed. Push notifications can still display while the app is visible, but are silent there to avoid a second sound. Delayed push for a message already read in the open chat is skipped. When the app is closed, the phone/browser controls the notification sound (including silent mode, Focus/Do Not Disturb, and site permissions); Web Push cannot force a custom sound.

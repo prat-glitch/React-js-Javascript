@@ -1,16 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTransientMessage } from '../lib/useTransientMessage';
 import { getSupabase } from '../lib/supabase';
 import { connectionMessage, parseProfileLink, profileLink } from '../lib/profile-links';
 import ProfileQrScanner from './ProfileQrScanner';
 
-export default function ProfileConnections({ profile, userId, inviteToken, onOpenChat, onRefreshChats }) {
-  const [tab, setTab] = useState('connect');
+export default function ProfileConnections({ profile, userId, inviteToken, onOpenChat, onRefreshChats, hidden = false, children }) {
+  const [tab, setTab] = useState(inviteToken ? 'connect' : 'chats');
   const [input, setInput] = useState('');
   const [requests, setRequests] = useState([]);
   const [candidate, setCandidate] = useState(null);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useTransientMessage();
   const [busy, setBusy] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
@@ -18,12 +19,18 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
   const candidateRef = useRef(null);
   const requestRevision = useRef('');
   const lookupRef = useRef(0);
+  const refreshFailedRef = useRef(false);
   const incoming = requests.filter((request) => request.direction === 'incoming' && request.status === 'pending');
 
   const refresh = useCallback(async () => {
     const db = getSupabase();
     const { data, error } = await db.rpc('list_basic_chat_requests');
-    if (error) { setStatus('Could not refresh chat requests. Please try again.'); return; }
+    if (error) {
+      if (!refreshFailedRef.current) setStatus('Could not refresh chat requests. Please try again.');
+      refreshFailedRef.current = true;
+      return;
+    }
+    refreshFailedRef.current = false;
     setRequests(data || []);
     const revision = (data || []).filter((item) => item.status === 'accepted').map((item) => item.request_id).sort().join(',');
     if (revision !== requestRevision.current) { requestRevision.current = revision; onRefreshChats(); }
@@ -32,7 +39,7 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
       const { data: card, error: cardError } = await db.rpc('get_basic_profile_card', { p_share_token: token });
       if (!cardError && candidateRef.current === token) setCandidate(card);
     }
-  }, [onRefreshChats]);
+  }, [onRefreshChats, setStatus]);
 
   useEffect(() => {
     let live = true;
@@ -55,7 +62,7 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
       width: 256, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#101828', light: '#ffffff' },
     })).then((url) => { if (live) setQr(url); }).catch(() => { if (live) setStatus('Could not create your QR code. You can still copy your profile link.'); });
     return () => { live = false; };
-  }, [shareUrl, tab]);
+  }, [shareUrl, tab, setStatus]);
 
   const lookup = useCallback(async (token) => {
     const revision = ++lookupRef.current;
@@ -67,7 +74,7 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
     else if (!data) { candidateRef.current = null; setStatus('This profile link is invalid or no longer available.'); }
     else setCandidate(data);
     setBusy(false);
-  }, []);
+  }, [setStatus]);
 
   useEffect(() => { if (inviteToken) lookup(inviteToken); }, [inviteToken, lookup]);
 
@@ -96,7 +103,7 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
       if (tab === 'requests') setStatus(!accept && data.status === 'declined'
         ? 'Request declined. No new chat was opened.' : connectionMessage(data.status));
       await refresh();
-      if (data.status === 'connected' && data.chat_id && accept) await onOpenChat(data.chat_id);
+      if (data.status === 'connected' && data.chat_id && accept) await openChat(data.chat_id);
     }
     setBusy(false);
   }
@@ -110,6 +117,12 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
     setBusy(false);
   }
 
+  async function openChat(chatId) {
+    await onOpenChat(chatId);
+    setTab('chats');
+    setStatus('');
+  }
+
   async function copyLink() {
     try { await navigator.clipboard.writeText(shareUrl); setStatus('Profile link copied.'); }
     catch { setStatus('Copy the profile link from the field below.'); }
@@ -120,13 +133,14 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
     catch (error) { if (error.name !== 'AbortError') setStatus('Sharing unavailable. Use Copy link instead.'); }
   }
 
-  return <section className="profile-connections" aria-label="Profile links and chat requests">
+  return <section className="profile-connections" hidden={hidden} aria-label="Profile links and chat requests">
     <div className="connection-tabs" role="tablist" aria-label="Connect with people">
-      {[['connect', 'Connect'], ['requests', 'Requests' + (incoming.length ? ' (' + incoming.length + ')' : '')], ['share', 'My QR']].map(([key, label]) =>
+      {[['chats', 'Chats'], ['connect', 'Connect'], ['requests', 'Requests' + (incoming.length ? ' (' + incoming.length + ')' : '')], ['share', 'My QR']].map(([key, label]) =>
         <button key={key} type="button" id={'connection-tab-' + key} role="tab" aria-selected={tab === key}
           aria-controls="connection-panel" onClick={() => { setTab(key); setStatus(''); }}>{label}</button>)}
     </div>
-    <div id="connection-panel" className={'connection-panel' + (tab === 'share' ? ' share-panel' : '')} role="tabpanel" aria-labelledby={'connection-tab-' + tab}>
+    <div id="connection-panel" className={'connection-panel' + (tab === 'chats' ? ' chat-panel' : tab === 'share' ? ' share-panel' : '')} role="tabpanel" aria-labelledby={'connection-tab-' + tab}>
+      {tab === 'chats' && children}
       {tab === 'connect' && <>
         <form className="connection-link-form" onSubmit={openLink}>
           <label htmlFor="profile-link">Open a profile link</label>
@@ -139,7 +153,7 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
           <div className="connection-person"><span className="avatar">{candidate.display_name.slice(0, 1).toUpperCase()}</span><strong>{candidate.display_name}</strong></div>
           <p className="connection-help">{connectionMessage(candidate.status)}</p>
           {candidate.status === 'available' && <button type="button" className="small-primary" disabled={busy} onClick={requestChat}>Send chat request</button>}
-          {candidate.status === 'connected' && <button type="button" className="small-primary" onClick={() => onOpenChat(candidate.chat_id)}>Open chat</button>}
+          {candidate.status === 'connected' && <button type="button" className="small-primary" onClick={() => openChat(candidate.chat_id)}>Open chat</button>}
           {candidate.status === 'pending_outgoing' && <button type="button" className="text-button" disabled={busy} onClick={() => cancel(candidate.request_id)}>Cancel request</button>}
           {candidate.status === 'pending_incoming' && <div className="connection-actions">
             <button type="button" className="small-primary" disabled={busy} onClick={() => respond(candidate.request_id, true)}>Accept</button>
@@ -156,7 +170,7 @@ export default function ProfileConnections({ profile, userId, inviteToken, onOpe
             <button type="button" className="connection-secondary" disabled={busy} onClick={() => respond(request.request_id, false)}>Decline</button></div>}
           {request.status === 'pending' && request.direction === 'outgoing' && <><p className="connection-help">Waiting for acceptance.</p>
             <button type="button" className="text-button" disabled={busy} onClick={() => cancel(request.request_id)}>Cancel request</button></>}
-          {request.status === 'accepted' && <button type="button" className="text-button" onClick={() => onOpenChat(request.chat_id)}>Open chat →</button>}
+          {request.status === 'accepted' && <button type="button" className="text-button" onClick={() => openChat(request.chat_id)}>Open chat →</button>}
           {request.status === 'declined' && request.direction === 'outgoing' && <p className="connection-help">Request declined. Messaging is unavailable.</p>}
         </article>)}
       </>}

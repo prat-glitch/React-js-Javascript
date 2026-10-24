@@ -1,0 +1,7 @@
+Darjeeling trip checklist
+
+Book train tickets.
+Confirm the guesthouse.
+Bring a rain jacket.
+
+Synthetic file for the isolated Spaces UI fixture.

@@ -8,7 +8,9 @@ self.addEventListener('push', (event) => {
     const visible = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
       .some((client) => client.visibilityState === 'visible');
     await self.registration.showNotification('Samlap', {
-      body: 'You have a new message in Samlap.',
+      body: data.kind === 'task_assignment'
+        ? 'A task was assigned to you in Samlap.'
+        : 'You have a new message in Samlap.',
       icon: '/icon-512.png',
       badge: '/icon-512.png',
       tag: typeof data.tag === 'string' ? data.tag : 'new-message-' + Date.now(),

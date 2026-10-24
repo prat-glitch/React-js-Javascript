@@ -92,24 +92,6 @@ export async function restorePush() {
   return true;
 }
 
-export async function testPush() {
-  const subscription = await currentPushSubscription();
-  if (!subscription) throw new Error('Enable notifications on this device first.');
-  const { data: { session } } = await getSupabase().auth.getSession();
-  if (!session) throw new Error('Sign in to test notifications.');
-  const response = await fetch('/api/push/test', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + session.access_token,
-    },
-    body: JSON.stringify({ endpoint: subscription.endpoint }),
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || 'Could not send test notification.');
-  return result;
-}
-
 export async function disablePush() {
   const subscription = await currentPushSubscription();
   if (!subscription) return;
